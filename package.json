@@ -1,0 +1,38 @@
+{
+  "name": "devnet-js",
+  "version": "1.0.0",
+  "description": "Automation and DevOps scripting templates for network devices.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Laquio/devnet-js.git"
+  },
+  "keywords": [
+    "[cisco",
+    "hp",
+    "hpe",
+    "aruba",
+    "mikrotik",
+    "switch",
+    "router",
+    "devops",
+    "js",
+    "network",
+    "template",
+    "example",
+    "ssh",
+    "ssh2]"
+  ],
+  "author": "louie.laquio@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Laquio/devnet-js/issues"
+  },
+  "homepage": "https://github.com/Laquio/devnet-js#readme",
+  "dependencies": {
+    "ssh2": "^0.8.5"
+  }
+}
