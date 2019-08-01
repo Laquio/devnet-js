@@ -11,18 +11,67 @@ class Devnetclass {
     this.devID = data.devID;
     this.comment = data.comment;
     this.config = data.config;
-    if (data.error == 'undefined' || data.error){ this.error = []}
+    if (data.error === undefined || data.error){ this.error = []}
     else{ this.error = data.error }
     this.hardware = data.hardware;
     this.log = data.log;
     this.status = data.status;
     this.system = data.system;
     this.sshconn = {active:false};
+    this.t1 = data.t1 || 150;
+    this.t2 = data.t2 || 5;
   }
+    execute(params,sshcb,datacb){
+      if ( typeof params == undefined || !params ){ return(false); }
+      if(!params.endActiveStream || this.sshconn.active==true ){ return "There is an active ssh stream for this session. Set endActiveStream = true, instead."; }
+      if(!params.command || !params.credential){ return(false);}
+      if(!typeof this.sshconn == undefined || !typeof this.sshconn.stream == undefined){
+        this.sshconn.stream.end();
+        this.sshconn.end();
+        this.sshconn.active = false;
+      }
+      var sessparam = {
+        credential:params.credential,
+        shell:false
+      }
+      if (params.setEncoding !=="" && params.setEncoding !== null){sessparam.setEncoding = params.setEncoding || 'utf-8'}
+      var objerr = this.error ||[];
+      var tmpdata = [];
+      var t1 = this.t1;
+      var t2 = this.t2;
+      var defsshconn = this.sshconn
+      var vtest = {}.toString.call(datacb) === '[object Function]';
+      this.openSshShell(sessparam,function(resconn){
+          resconn.exec(params.command, function(err, stream) {
+            if (err) {
+              objerr.push(err);
+              throw err;
+            }
+            if(sessparam.setEncoding){stream.setEncoding(sessparam.setEncoding);}
+            stream.on('close', function(code, signal) {
+              setTimeout(function(){
+                resconn.end();
+                if({}.toString.call(sshcb) === '[object Function]'){sshcb(tmpdata);}
+              },t1);
+            });
+            stream.on('data', function(data) {
+              tmpdata.push(data);
+              if (vtest){
+                setTimeout(function(){
+                    datacb(data);
+                },t2);
+              }
+            }).stderr.on('data', function(data) {
+              objerr.push(data);
+              throw 'Error';
+            });
+          });//-resconn.exec
+    });//-this.openSshShell
+    }//-execute
     openSshShell(sesParams,sshcb){
     if (this.sshconn.active){
-      this.model.error.push("This Device (" + this.sshconn.credential.host + ") has an active session!");
-      return this.model.error(0);
+      this.error.push("This Device (" + this.sshconn.credential.host + ") has an active session!");
+      return this.error[0];
     }else{
       var objerr = this.error;
       var objconn = this.sshconn;
@@ -32,11 +81,15 @@ class Devnetclass {
               try {
                 objconn = new SSH2C();
                 objconn.on('ready',function(){
-                  objconn.shell(function(err, stream) {
-                    if (err) throw err;
-                    objconn.stream = stream;
+                  if(sesParams.shell==false){
                     res(true);
-                  });
+                  }else{
+                    objconn.shell(function(err, stream) {
+                      if (err) throw err;
+                      objconn.stream = stream;
+                      res(true);
+                    });
+                  }
                 }).connect(sesParams.credential);
               } catch (e) {
                 objerr.push(e);
@@ -46,9 +99,11 @@ class Devnetclass {
           });
       }).then((result) => {
         if (result) {
-          this.sshconn.active = true;
           this.sshconn = objconn;
-          sshcb(objconn.stream);
+          this.sshconn.credential = sesParams.credential;
+          this.sshconn.active = true;
+          if(sesParams.shell==false){sshcb(objconn);}
+          else{sshcb(objconn.stream);}
         }else {
           this.sshconn.active = false;
           sshcb(false);

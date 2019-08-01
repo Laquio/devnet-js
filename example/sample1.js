@@ -8,7 +8,7 @@ var loginparam = {
       password: '<pwd>'
     }
   }
-ciscodev1.openSshShell(loginparam,function(stream){
+ciscodev1.openSshShell(loginparam,function(stream){  // interactive shell
   if(stream){   // stream instance
     console.log('Session Ready');
     stream.on('close', function() {
@@ -17,6 +17,6 @@ ciscodev1.openSshShell(loginparam,function(stream){
     }).on('data', function(data) {
       console.log('OUTPUT: ' + data);
     });
-    stream.end('ls -l\nexit\n');
+    stream.end('dir\nexit\n');
   }
 });
