@@ -17,7 +17,7 @@ setTimeout(function(){ //Writing stream in a simple way some delay is required n
 }, 3000);
 /*
 setTimeout(testfn, 2000);
-function testfn(){  \/-simple stright forward style
+function testfn(){  //-simple stright forward style
     ciscodev1.sshconn.simplify = false;
     ciscodev1.streamSendkeys("show ip int br"); // or ciscodev1.streamSendkeys("show version",{autoenter:true});
     ciscodev1.sshconn.stream.on('data', function(data) {
@@ -28,12 +28,12 @@ function testfn(){  \/-simple stright forward style
       ciscodev1.sshconn.end();
     });
 
-    setTimeout(function(){  //terminate ssh session after 10 seconds
+    setTimeout(function(){
       process.stdout.write("   - Enter Key!");
       ciscodev1.streamSendkeys("\n")
     }, 3000);
 }//-testfn
 */
 setTimeout(function(){  //terminate ssh session after 12 seconds
-  ciscodev1.end(); //or ciscodev1.terminate();
+  ciscodev1.end();
 }, 12000);

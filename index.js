@@ -35,7 +35,6 @@ class Devnetclass {
       options.psobj.resume = options.psobj.resume || true;
       options.psobj.setEncoding = options.psobj.setEncoding || 'utf-8';
       options.psobj.setRawMode = options.psobj.setRawMode || true;
-    //  options.exitstring = options.exitstring
       psobj.setRawMode(options.psobj.setRawMode);
       psobj.setEncoding(options.psobj.setEncoding);
       if(options.psobj.stoptoken){
