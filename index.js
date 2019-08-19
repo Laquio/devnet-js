@@ -4,7 +4,6 @@
 //lastmod: August 2019
 //version: 1.0
 const SSH2C = require('ssh2').Client;
-var ciscotemplate = require('./src/ciscotemplate');
 class Devnetclass {
   constructor(data){
     this.hostname = data.hostname;
@@ -22,6 +21,41 @@ class Devnetclass {
     this.t2 = data.t2 || 5;
     this.bsBuff = data.bsBuff || Buffer.from([8]);
   }
+    isIdle(charcheck){
+
+      if(this.sshconn.active){
+        charcheck = charcheck ||'\n\n';
+        return new Promise(res=>{
+          var hoststrtmp="";
+          var ctr = 0;
+          var tmp = "";
+          var flg=true;
+            this.streamSendkeys(charcheck,{autoenter:false,emit:true}).on('data',(ds)=>{
+              if(String(ds).length>3 && flg){
+                if(hoststrtmp==String(ds).trim()){
+                  if(String(charcheck).length>2){
+                    if(ctr==String(charcheck).length){
+                      flg = false;
+                      res(hoststrtmp);
+                    }
+                  }else{ res(hoststrtmp); }
+                }else{ hoststrtmp = String(ds).trim(); }
+                ctr++;
+                if(ctr>String(charcheck).length+1){
+                  flg = false;
+                  res(false);
+                }
+              }else if(charcheck.charCodeAt(0)==32){
+                tmp+=String(ds);
+                if(charcheck.length==tmp.length){
+                  if(charcheck==tmp){res(true);}
+                  else{res(false);}
+                }
+              }
+            });//-this.streamSendkeys
+        });
+      }else{ return false; }
+    }
     streamcli(options,cb){
       if(this.sshconn.active!==true || !this.sshconn.stream){ return false;}
       const bsconst = this.bsBuff;
@@ -32,6 +66,7 @@ class Devnetclass {
       var sctr=0;
       var cbflg = {}.toString.call(cb) === '[object Function]';
       options = options || {psobj:{}};
+      if (!options.psobj){options.psobj = {}};
       options.psobj.resume = options.psobj.resume || true;
       options.psobj.setEncoding = options.psobj.setEncoding || 'utf-8';
       options.psobj.setRawMode = options.psobj.setRawMode || true;
@@ -71,15 +106,10 @@ class Devnetclass {
               }).then((res2)=>{
                 if(res2!==false){
                   varthis.streamSendkeys(input,{autoenter:false});
-                }else if(options.revertComm==true){
-                  if(res2===true){res2 = tmpinput.length}
-                  for (i = 0;i<res2 && i<70;i++){
-                    varthis.sshconn.stream.write(bsconst);
-                  }
                 }
               });
             }else{
-              varthis.streamSendkeys(tmpinput,{autoenter:false});
+              varthis.streamSendkeys(input,{autoenter:false});
             }
           }else{
             if(input.charCodeAt(0)==10||input.charCodeAt(0)==13){
@@ -89,12 +119,6 @@ class Devnetclass {
                 }).then((res2)=>{
                   if(res2!==false){
                     varthis.streamSendkeys(tmpinput,{autoenter:true});
-                  }else if(options.revertComm==true){
-                    if(res2==true){res2 = tmpinput.length}
-                    for (i = 0;i<res2 && i<70;i++){
-//                      process.stdout.write(bsconst);
-                      varthis.sshconn.stream.write(bsconst);
-                    }
                   }
                 });
               }else{
@@ -245,9 +269,26 @@ class CiscoRouterdev extends Devnetclass{ //under construction.
       super(_model);
       if (_model.id) { this.id = _model.id; }
     }
+    this.ciscotemplate = require('./src/ciscotemplate');
+  }
+  parseVersion(option){
+    var _datav = {
+      input:"show version\n",
+      output:" "
+    }
+    _datav.classobj = this;
+    if(typeof option=='undefined'){
+      option = {
+        hide:true,
+        nextmarkerflg:true
+      }
+    }
+    if (typeof option.fileref === "undefined"){ this.localtemplate = this.ciscotemplate }
+    else if({}.toString.call( option.fileref)==='[object Object]'){this.localtemplate = option.fileref}
+    else{ this.localtemplate = require(option.fileref); }
+    return fnver(_datav,option,this.localtemplate.getversion);
   }
 }//-CiscoRouterdev class
-
 //Cisco Switch Device Class Template Definition
 class CiscoSWdev extends Devnetclass{ //under construction.
   constructor(_model){
@@ -255,9 +296,41 @@ class CiscoSWdev extends Devnetclass{ //under construction.
       super(_model);
       if (_model.id) { this.id = _model.id; }
     }
+    this.ciscotemplate = require('./src/ciscotemplate');
+  }
+  parseMAC(option){
+    var _datav = {
+      input:["show arp\n","show mac\n"],
+      output:[' ',' ']
+    }
+    if(typeof option=='undefined'){ option = { nextmarkerflg:true } }
+    _datav.classobj = this;
+    return new Promise(res=>{
+      fngetdata(_datav).then(_res=>{
+        console.log(raw2arry(_res[0]));
+        console.log(raw2arry(_res[1],{filter:'-'}));
+        res(true);
+      });
+    });
+  }
+  parseVersion(option){
+    var _datav = {
+      input:"show version\n",
+      output:" "
+    }
+    _datav.classobj = this;
+    if(typeof option=='undefined'){
+      option = {
+        hide:true,
+        nextmarkerflg:true
+      }
+    }
+    if (typeof option.fileref === "undefined"){ this.localtemplate = this.ciscotemplate }
+    else if({}.toString.call( option.fileref)==='[object Object]'){this.localtemplate = option.fileref}
+    else{ this.localtemplate = require(option.fileref); }
+    return fnver(_datav,option,this.localtemplate.getversion);
   }
 }//-CiscoSWdev class
-
 //HP Switch Device Class Template Definition
 class HpSWdev extends Devnetclass{
   constructor(_model){
@@ -267,7 +340,6 @@ class HpSWdev extends Devnetclass{
     }
   }
 }
-
 //Aruba Device Class Template Definition
 class ArubaIAPdev extends Devnetclass{
   constructor(_model){
@@ -277,7 +349,6 @@ class ArubaIAPdev extends Devnetclass{
     }
   }
 }
-
 //Talari Device Class Template Definition
 class Talaridev extends Devnetclass{
   constructor(_model){
@@ -287,7 +358,6 @@ class Talaridev extends Devnetclass{
     }
   }
 }
-
 //Mikrotik Device Class Template Definition
 class Mikrotikdev extends Devnetclass{
   constructor(_model){
@@ -297,7 +367,6 @@ class Mikrotikdev extends Devnetclass{
     }
   }
 }
-
 function checkCred(_cred,cb){
   if ( typeof _cred == 'undefined' || !_cred ){ cb(false); }
   else if(_cred.username){
@@ -314,4 +383,260 @@ function checkCred(_cred,cb){
     }else{cb(false);}
   }
 }
-module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass};
+function fnver(_datav,option,val){
+  return new Promise(res0=>{
+    if (typeof option.json === "undefined"){option.json = true}
+    if (typeof option.nextmarkerflg === "undefined"){option.nextmarkerflg = true}
+      fngetdata(_datav,option).then(res=>{
+        return new Promise(res2=>{ res2(extractstr(res,val)); });
+      }).then(res3=>{
+        if(option.json==true){
+          var tmpv = arry2json(res3);
+          _datav.classobj.sshconn.log = {version:tmpv,date:Date.now()}
+          res0(tmpv);
+        }else{
+          _datav.classobj.sshconn.log = {version:res3,date:Date.now()}
+          res0(res3);
+        }
+      });
+  });
+}
+async function fngetdata2(datastr,option,morecb){
+    var inptlen =  datastr.input.length;
+    var objtmp = {};
+    if(!{}.toString.call(datastr.output)=== '[object Array]'){ res('Output variable must be an array of values.')}
+    else if(inptlen   !== datastr.output.length){ res('Input and output variables must be in the same length.') }
+    else {
+      var tempvar = [];
+      for(i =0;i<inptlen;i++){
+        await new Promise(next=> {
+          objtmp={
+            input:datastr.input[i],
+            output:datastr.output[i],
+            classobj:datastr.classobj
+          }
+          fngetdata(objtmp,option).then(result=>{
+            tempvar.push(result);
+            next();
+          });
+        })
+      }
+      return tempvar;
+    }
+}
+function fngetdata(datastr,option,morecb){
+  return new Promise(res=>{
+    if (typeof datastr === undefined) {res(false)}
+    var classobj = datastr.classobj || false;
+    if (!classobj){res(false)}
+    if (!datastr.input || !datastr.output){ res(false) }
+    if (typeof option === "undefined"){ option = {uppercase:false} }
+    if (typeof option.uppercase === "undefined"){option.uppercase = false}
+    var dumptmp = [];
+    var dumptmp2 = [];
+    var morecbflg = {}.toString.call(morecb)==='[object Function]';
+    if ({}.toString.call(datastr.input)=== '[object Array]'){ res(fngetdata2(datastr,option,morecb)); }
+    else{
+      if (typeof option.nextmarker === "undefined"){option.nextmarker = '--More--'}
+      if (typeof option.hide === "undefined"){option.hide = true}
+      if (typeof option.nextmarkerflg === "undefined"){option.nextmarkerflg = false}
+      if (typeof option.nextmarkercomm === "undefined"){option.nextmarkercomm = ' '}
+      var tmpstr = "";
+      var endflg=true;
+      classobj.sshconn.busy = true;
+      classobj.isIdle().then(hostind=>{
+          if(hostind!==false){
+          classobj.streamSendkeys(datastr.input,{autoenter:false,emit:true}).on('data',(ds)=>{
+            tmpstr = String(ds).trim();
+            if(tmpstr.length>2){
+                dumptmp.push(ds);
+                if(!option.hide){process.stdout.write(ds);}
+                if(tmpstr.indexOf(option.nextmarker)!==-1 && option.nextmarkerflg){
+                  endflg=false;
+                  dumptmp2.push(tmpstr);
+                  if(morecbflg){ morecb(ds); }
+                  classobj.streamSendkeys(option.nextmarkercomm,{autoenter:false,emit:false});
+                }else if(tmpstr.indexOf(datastr.output)!==-1){
+                  endflg=false;
+                  if(option.nextmarkerflg==true){
+                    dumptmp2.push(tmpstr);
+                    if(tmpstr.indexOf(hostind)!==-1){ classobj.streamSendkeys(option.nextmarkercomm+'\n',{autoenter:false,emit:false}); }
+                  }else{
+                    if(option.dump==true){ res({data:ds,dumpdata:dumptmp}) }
+                    else{ res(ds); }
+                  }
+                }else if(option.uppercase==true){
+                  if(tmpstr.toUpperCase().indexOf(datastr.output.toUpperCase())!==-1){
+                    endflg=false;
+                    if(option.nextmarkerflg==true){
+                      dumptmp2.push(tmpstr);
+                      if(tmpstr.indexOf(hostind)!==-1){ classobj.streamSendkeys(option.nextmarkercomm+'\n',{autoenter:false,emit:false}); }
+                    }else{
+                      if(option.dump==true){
+                        res({data:ds,dumpdata:dumptmp})
+                      }else{ res(ds); }
+                    }
+                  }
+                }else if(tmpstr.indexOf(hostind)!==-1 && endflg==false){
+                  endflg=true;
+                  classobj.isIdle().then(teststr=>{
+                    classobj.sshconn.busy = false;
+                    if(hostind==teststr){
+                      if(option.dump==true){
+                        classobj.sshconn.prevlog = {data:dumptmp2,dumpdata:dumptmp,date:Date.now()};
+                        res({data:dumptmp2,dumpdata:dumptmp})
+                      }else{
+                        classobj.sshconn.prevlog = {data:dumptmp2,date:Date.now()};
+                        res(dumptmp2);
+                      }
+                    }else{
+                      classobj.sshconn.prevlog = {data:false,date:Date.now()};
+                      res(false);
+                    }
+                  });
+                }
+                if(morecbflg){ morecb(ds); }
+            }
+          });//-classobj.streamSendkeys
+        }
+      });//-classobj.isIdle().then(hostind
+    }
+  });//-Promise
+}//-fngetdata
+function raw2arry(val,option){
+  var valtype = {}.toString.call(val);
+  if(typeof option==='undefined'){option = {clean:true}}
+  else if(typeof option.clean==='undefined'){option.clean=true}
+  if(valtype === '[object Array]'){
+    var tmp = [];
+    for (elem of val){ if(elem.trim()!==""){ tmp.push(raw2arry(elem,option)) } }
+    return tmp;
+  }else if(valtype === '[object String]'){
+    if(val.indexOf('\n')!==-1){
+      if(option.clean){
+        var tmp4 = [];
+        for(elem3 of raw2arry(spltdt(val),option)){ if(String(elem3).trim().length>1){tmp4.push(elem3)}}
+        return tmp4;
+      }else{return raw2arry(spltdt(val),option);}
+    }
+    else{
+      var tmp2 = val.replace(/(\t)/g, " ").replace(/(   )/g, "").replace(/(  )/g, " ").replace(/(  )/g, " ");
+      if(typeof option.filter=='string'){tmp2 = tmp2.replace(new RegExp(option.filter, "g"), "");}
+      if(option.clean){
+        var tmp3 = [];
+        for(elem2 of tmp2.split(' ')) { if(elem2.length>=1){ tmp3.push(elem2)} }
+        return tmp3;
+      }else{ return tmp2.split(' '); }
+    }
+  }
+}
+function spltdt(strdata,dchar){
+  if(typeof dchar ==='undefined'){dchar='\r\n';}
+  var tmparry = "";
+  try {
+    strdata = String(strdata).replace(/[\x00-\x08]/g, "");
+    var arry2 = [];
+    if(strdata.trim().indexOf(dchar)!==-1){
+      tmparry = strdata.split(dchar);
+    }else if(strdata.trim().indexOf('\n')!==-1){
+      tmparry = strdata.replace(/(\r)/gm, "").split("\n");
+    }else{
+      arry2.push(strdata);
+      return arry2;
+    }
+    for (val of tmparry) { if (String(val).trim().length>2){ arry2.push(String(val).trim()); } }
+    return arry2;
+  } catch (e) { return null; }
+}
+function extractstr(refarry,objstr){
+  var output=[];
+  var arry1 = [];
+  if ({}.toString.call(refarry) === '[object Array]'){
+    var tmpstr;
+    for (tmpstr of refarry){ arry1 = arry1.concat(spltdt(tmpstr)); }
+  }else{ arry1=spltdt(refarry); }
+  var strflg = {}.toString.call(objstr) === '[object Array]';
+  var elem;
+  for (elem of arry1){
+    if(strflg){
+      var elem2;
+      var suboutput = [];
+      for(elem2 of objstr){
+        var str = '":"' + elem.replace(/"/gm, '`')  + '"}';
+        if({}.toString.call(elem2) === '[object String]'){
+          if(elem.indexOf(elem2)!==-1){
+            if(elem2.indexOf(' ')!==-1){ str = '{"' + elem2.replace(/(   )/g, "").replace(/(  )/g, "").replace(/( )/g, "_") + str; }else { str = '{"' + elem2 + str; }
+            suboutput.push(JSON.parse(str));
+          }
+        }else if({}.toString.call(elem2) === '[object Array]'){
+          var bflg = true;
+          for(elem3 of elem2){
+            if(elem.indexOf(elem3)==-1){
+              bflg = false;
+              break;
+            }
+          }
+          if(bflg){
+            var keystr =  elem2[0];
+            if (elem2[1]){ keystr+= ' '+elem2[1]}
+            if(keystr.indexOf(' ')!==-1){ str = '{"' + keystr.replace(/(   )/g, "").replace(/(  )/g, "").replace(/( )/g, "_") + str; }else { str = '{"' + keystr + str; }
+            suboutput.push(JSON.parse(str));
+          }
+        }
+      }
+      if(suboutput.length>0){ output.push(suboutput); }
+    }else{ output.push(elem); }
+  }
+  return output;
+}
+function keyvalfn(key,val){
+  var valtype = {}.toString.call(val);
+  if ( valtype === '[object String]'){return JSON.parse('{"' + key.replace(/(   )/g, "").replace(/(  )/g, "").replace(/( )/g, "_") + '":"' + val.replace(/"/gm, '`')  + '"}');}
+  else{
+    var keytmp =  key.replace(/(   )/g, "").replace(/(  )/g, "").replace(/( )/g, "_");
+    var tmp = JSON.parse('{"' + keytmp + '":0"}');
+    tmp[keytmp] = val;
+    return tmp;
+  }
+}
+function arry2json(obj,id){
+  if ({}.toString.call(obj) !== '[object Array]') {return obj};
+  var ctr=0;
+  var result={};
+  for (elem1 of obj){
+    ctr++;
+    if ({}.toString.call(elem1) === '[object Array]') {
+      if(id){
+        var objt1 = arry2json(elem1, id+'_'+ctr );
+        Object.keys(objt1).forEach(key => {
+          if(result.hasOwnProperty(key)){
+            result[key+'_'+ctr] = objt1[key]
+          }else{
+            result[key] = objt1[key]
+          }
+        });
+      }else{
+        var objt2 = arry2json(elem1,ctr);
+        Object.keys(objt2).forEach(key => {
+          if(result.hasOwnProperty(key)){
+            result[key+'_'+ctr] = objt2[key]
+          }else{
+            result[key] = objt2[key]
+          }
+        });
+      }
+    }else if({}.toString.call(elem1) === '[object Object]'){
+      Object.keys(elem1).forEach(key => {
+        if(result.hasOwnProperty(key)){
+          result[key+id] = elem1[key]
+        }else { result[key] = elem1[key] }
+      });
+    }
+    else{
+      if(id){ result[id] = elem1; }
+      else{ result['_'] = elem1; }
+    }
+  }
+  return result;
+}
+module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry}};

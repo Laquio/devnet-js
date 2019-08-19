@@ -66,7 +66,7 @@ ciscodev1.openSshShell(loginparam,function(stream){  // interactive shell
 });
 ```
 
-###Execute `show` commands in a Cisco Device
+###Execute show commands in a Cisco Device
 
 ```js
 var devnet = require('devnet-js');
@@ -164,6 +164,10 @@ var loginparam = {
       port: 22,
       username: '<your-username-here>',
       password: '<pwd>'
+      algorithms: {
+        cipher: [ '3des-cbc' ],
+        kex: [ "diffie-hellman-group1-sha1" ]
+      }
     }
   }
 sampledev1.openSshShell(loginparam);
@@ -175,6 +179,7 @@ function testfn(){
 sampledev1.openSshShell(loginparam,function(stream){  // interactive shell ideal method
   if(stream){   // stream instance
     console.log('Session Ready');
+    //sampledev1.streamcli({live:true});
     sampledev1.streamcli({psobj:{stopctr:4,stoptoken:3}});    //sampl.e CLI interaction //-hit 'Ctrl+c' four times to exit process
   }
 });
@@ -184,6 +189,24 @@ sampledev1.openSshShell(loginparam,function(stream){  // interactive shell
   if(stream){   // stream instance
     console.log('Session Ready');
     sampledev1.streamcli({psobj:{stopctr:1,stoptoken:"3"}});    //sampl.e CLI interaction //-hit character '3' 1 time to exit process //single character
+  }
+});
+*/
+/*
+var tmpkeys = "";
+sampledev1.openSshShell(loginparam,function(stream){
+  if(stream){   // stream instance
+    console.log('Session Ready');
+    sampledev1.streamcli({live:true},function(cbval){
+      if(cbval.charCodeAt(0)==13){
+        console.log("\n last command : ", tmpkeys);
+        tmpkeys = "";
+        return false;// exclude ascii 13.
+      }else{
+        tmpkeys+=cbval;
+        return true; //send keys
+      }
+    });
   }
 });
 */
@@ -198,9 +221,54 @@ sampledev1.openSshShell(loginparam,function(stream){  // interactive shell
 ##cisco-router
 ```js
 ```
-###parse-version
+###parse version
 
+Returns the summary information of cli show version commands.
+option{
+  fileref:'path or json', // default is in dir 'src', filename 'ciscotemplate.js' for Cisco devices if not specified.  
+  json:true,  //[true || false ] default is true, formats the output json for array format.
+  nextmarker:'--More--', // [ word string ] default is '--More--', string indicator in a session emulator/terminal
+  nextmarkerflg:true, // [true || false ] default is true, continue marker enable flag in a session emulator/terminal e.g. '--More--' in Cisco CLI
+  hide:true   // [true || false ] default is true, hides background console logging
+}
+sampledev1.parseVersion(option) //return a promise
+
+Example:
 ```js
+var devnet = require('devnet-js');
+let sampledev1 = new devnet.CiscoRouter({id:"any string here"});
+var loginparam = {
+    credential:{  //see ssh2 documentation for other option
+      host: '<hostname or IP>',
+      port: 22,
+      username: '<your-username-here>',
+      password: '<pwd>'
+      algorithms: {
+        cipher: [ '3des-cbc' ],
+        kex: [ "diffie-hellman-group1-sha1" ]
+      }
+    }
+  }
+new Promise(_res=>{
+  sampledev1.openSshShell(loginparam,function(stream){    //ctrl+c to end process
+    if(stream){   // stream instance
+      stream.setEncoding("utf-8");
+      console.log('Session Ready.');
+      _res(true);
+    }
+  });
+}).then(res=>{
+  if(res){
+    var option={
+      json:true,        //Select between Array or JSON
+      fileref:__dirname+'/ciscotemplate-cust' //Absolute path
+    }
+    sampledev1.parseVersion(option).then(res=>{     //example function
+      console.log("output:\n",res);
+    });
+  }
+});
+
 ```
 
 ###parse-arp-entry

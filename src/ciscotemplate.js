@@ -3,3 +3,21 @@
 //date: July 2019
 //lastmod: August 2019
 //version: 1.0
+const getversion=[
+  'Version',
+  'uptime',
+  'System image file',
+  'Last reset',
+  'Processor board ID',
+  ['Configuration register','0x2102'],// contains 'Configuration register' and '0x2102'
+  'memory',
+  'NVRAM',
+  'interfaces',
+  'ROM:',
+  'reload reason'
+
+];
+const getinterface=[
+
+];
+module.exports = {getversion:getversion,getinterface:getinterface}
