@@ -12,7 +12,7 @@ devnet-js is using [ssh2](https://www.npmjs.com/package/ssh2) package to establi
 * [Installation](#installation)
 * [SSH Examples](#ssh-examples)
   * [Sample SSH Stream](#sample-ssh-stream)
-  * [Execute `show` Commands in a Cisco Device](#execute-show-in-a-cisco-dev)
+  * [Execute show commands in a Cisco Device](#execute-show-in-a-cisco-dev)
   * [Interactive SSH](#interactive-ssh)
   * [Interactive cli console](#stream-cli)
 * [Functions Examples](#functions-examples)
@@ -213,25 +213,26 @@ sampledev1.openSshShell(loginparam,function(stream){
 
 ```
 
-##Functions Examples
+## Functions Examples
+See example below:
 
-```js
-```
+## Cisco Router
 
-##cisco-router
-```js
-```
-###parse version
+### parse version
 
 Returns the summary information of cli show version commands.
+
+```js
 option{
   fileref:'path or json', // default is in dir 'src', filename 'ciscotemplate.js' for Cisco devices if not specified.  
   json:true,  //[true || false ] default is true, formats the output json for array format.
   nextmarker:'--More--', // [ word string ] default is '--More--', string indicator in a session emulator/terminal
-  nextmarkerflg:true, // [true || false ] default is true, continue marker enable flag in a session emulator/terminal e.g. '--More--' in Cisco CLI
+  nextmarkerflg:true, // [true || false ] default is true, continue marker enable flag in a session emulator/terminal, will loop through until the end of the command buffer output  e.g. '--More--' in Cisco CLI.
   hide:true   // [true || false ] default is true, hides background console logging
 }
-sampledev1.parseVersion(option) //return a promise
+sampledev1.parseVersion(option) //returns a promise
+```
+
 
 Example:
 ```js
@@ -260,8 +261,8 @@ new Promise(_res=>{
 }).then(res=>{
   if(res){
     var option={
-      json:true,        //Select between Array or JSON
-      fileref:__dirname+'/ciscotemplate-cust' //Absolute path
+      json:true        //Select between Array or JSON
+      //fileref:__dirname+'/ciscotemplate-cust' //Absolute path
     }
     sampledev1.parseVersion(option).then(res=>{     //example function
       console.log("output:\n",res);
@@ -271,51 +272,46 @@ new Promise(_res=>{
 
 ```
 
-###parse-arp-entry
+### Parse arp entry
 
 ```js
 ```
 
-###parse-running-interface
+### Parse running interface
 
 ```js
 ```
 
-##cisco-switch
+## Cisco Switch
+
+### Parse MAC address
 
 ```js
 ```
 
-###parse-mac-address
+### Parse vlan
 
 ```js
 ```
 
-###parse-vlan
+## HP Switch
+
+
+### Parse poe
 
 ```js
 ```
 
-##hp-switch
+## Devnet-js default class option and parameter details
 
-```js
-```
+### Default class Constructor
 
-###parse-poe
+### openSshShell function
 
-```js
-```
+### streamSendkeys function
 
-##Devnet-js default class option and parameter details
+### execute function
 
-###Default class Constructor
+### streamcli function
 
-###openSshShell function
-
-###streamSendkeys function
-
-###execute function
-
-###streamcli function
-
-###end function
+### end function
