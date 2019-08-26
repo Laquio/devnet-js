@@ -12,10 +12,10 @@ devnet-js is using [ssh2](https://www.npmjs.com/package/ssh2) package to establi
 * [Installation](#installation)
 * [SSH Examples](#ssh-examples)
   * [Sample SSH Stream](#sample-ssh-stream)
-  * [Execute show commands in a Cisco Device](#execute-show-in-a-cisco-dev)
+  * [Execute show commands in a Cisco Device](#execute-show-in-a-cisco-device)
   * [Interactive SSH](#interactive-ssh)
   * [Interactive cli console](#stream-cli)
-* [Functions Examples](#functions-examples)
+* [Functions Example](#functions-example)
   * [Cisco Router](#cisco-router)
       * [Parse Version](#parse-version)
       * [Parse Arp Entry](#parse-arp-entry)
@@ -25,6 +25,9 @@ devnet-js is using [ssh2](https://www.npmjs.com/package/ssh2) package to establi
       * [Parse Vlan](#parse-vlan)
   * [HP Switch](#hp-switch)
       * [Parse poe](#parse-poe)
+      * [Parse MAC-ADDR](#parse-mac-addr)
+* [Devnet Tools](#devnet-tools)
+
 
 ## Requirements
 
@@ -66,7 +69,7 @@ ciscodev1.openSshShell(loginparam,function(stream){  // interactive shell
 });
 ```
 
-###Execute show commands in a Cisco Device
+### Execute show commands in a Cisco Device
 
 ```js
 var devnet = require('devnet-js');
@@ -213,19 +216,19 @@ sampledev1.openSshShell(loginparam,function(stream){
 
 ```
 
-## Functions Examples
+## Functions Example
 See example below:
 
 ## Cisco Router
 
 ### parse version
 
-Returns the summary information of cli show version commands.
+Returns the summary information of cli show version command.
 
 ```js
 option{
   fileref:'path or json', // default is in dir 'src', filename 'ciscotemplate.js' for Cisco devices if not specified.  
-  json:true,  //[true || false ] default is true, formats the output json for array format.
+  json:true,  //[true || false ] default is true, formats the output into json.
   nextmarker:'--More--', // [ word string ] default is '--More--', string indicator in a session emulator/terminal
   nextmarkerflg:true, // [true || false ] default is true, continue marker enable flag in a session emulator/terminal, will loop through until the end of the command buffer output  e.g. '--More--' in Cisco CLI.
   hide:true   // [true || false ] default is true, hides background console logging
@@ -302,7 +305,50 @@ new Promise(_res=>{
 ```js
 ```
 
-## Devnet-js default class option and parameter details
+### Parse Mac Addr
+```js
+option{
+  json:true,  //[true || false ] default is true, formats the output into json.
+  format:'XXXX-xxxx-XXXX' // 'X' for uppercase and 'x' for lower case, other symbols are supported e.g. 'XXXX:xx-xx.XXXX'
+}
+sampledev1 = new devnet.HpSwitch({id:"any string here"});   //HPE SWITCH EXAMPLE
+sampledev1.parseVersion(option) //returns a promise
+```
+
+```js
+var devnet = require('devnet-js');
+let sampledev1 = new devnet.HpSwitch({id:"any string here"});   //HPE SWITCH EXAMPLE
+var loginparam = {
+    credential:{  //see ssh2 documentation for other option
+      host: '<hostname or IP>',
+      port: 22,
+      username: '<your-username-here>',
+      password: '<pwd>',
+      algorithms: {
+        cipher: [ '3des-cbc' ],
+        kex: [ "diffie-hellman-group1-sha1","diffie-hellman-group-exchange-sha256","diffie-hellman-group14-sha1" ]
+      }
+    }
+  }
+new Promise(_res=>{
+  sampledev1.openSshShell(loginparam,function(stream){
+    if(stream){   // stream instance
+      stream.setEncoding("utf-8");
+      console.log('Session Ready.');
+      _res(true);
+    }
+  });
+}).then(res=>{
+  if(res){
+    var option={ json:true,format:'XXXX-xx:xx-XX.XX' }
+    sampledev1.parseMAC(option).then(res=>{     //example function
+      console.log("output:\n",res);
+    });
+  }
+});
+```
+
+## Devnet-js Default Class options and parameter details
 
 ### Default class Constructor
 
@@ -315,3 +361,32 @@ new Promise(_res=>{
 ### streamcli function
 
 ### end function
+
+## Devnet Tools
+
+Functions you might be interested.
+```js
+var devnet = require('devnet-js');
+const devtools = devnet.tools;
+
+devtools.str2Arry(String,Token)  // returns array of string, sanitize unwanted '\n', '\r' and '\b' split string with token
+devtools.extractstr() //
+devtools.keyval(key,value) // returns JSON object of key and value pair.
+devtools.raw2arry() //
+devtools.formatMAC()  //
+devtools.quickipcheck(String) // Check String if there is an IPADDR pattern then  convert string into JSON
+```
+
+### str2Arry function
+
+### extractstr function
+
+### keyval function
+
+### arry2json function
+
+### raw2arry function
+
+### formatMAC function
+
+### quickipcheck function

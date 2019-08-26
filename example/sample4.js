@@ -5,7 +5,7 @@ var loginparam = {
       host: '<hostname or IP>',
       port: 22,
       username: '<your-username-here>',
-      password: '<pwd>'
+      password: '<pwd>',
       algorithms: {
         cipher: [ '3des-cbc' ],
         kex: [ "diffie-hellman-group1-sha1" ]

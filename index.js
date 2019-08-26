@@ -22,39 +22,47 @@ class Devnetclass {
     this.bsBuff = data.bsBuff || Buffer.from([8]);
   }
     isIdle(charcheck){
-
       if(this.sshconn.active){
         charcheck = charcheck ||'\n\n';
         return new Promise(res=>{
           var hoststrtmp="";
-          var ctr = 0;
+          var ctr = 1;
           var tmp = "";
           var flg=true;
-            this.streamSendkeys(charcheck,{autoenter:false,emit:true}).on('data',(ds)=>{
-              if(String(ds).length>3 && flg){
-                if(hoststrtmp==String(ds).trim()){
+          var dstmp = "";
+          this.streamSendkeys(charcheck,{autoenter:false,emit:true}).on('data',(ds)=>{
+            if(flg){
+              dstmp = String(ds).trim();
+              if(dstmp.length>4 && dstmp.length<100){
+                if(hoststrtmp==dstmp){
+                  flg = false;
                   if(String(charcheck).length>2){
-                    if(ctr==String(charcheck).length){
-                      flg = false;
-                      res(hoststrtmp);
-                    }
+                    if(ctr==String(charcheck).length||(ctr+1)==String(charcheck).length){ res(hoststrtmp); }
                   }else{ res(hoststrtmp); }
-                }else{ hoststrtmp = String(ds).trim(); }
+                }else{ hoststrtmp = dstmp; }
                 ctr++;
                 if(ctr>String(charcheck).length+1){
                   flg = false;
                   res(false);
+                }else if(dstmp.length>=35 && dstmp.indexOf('\n')!==-1){
+                  flg = false;
+                  var tmp0 = dstmp.split("\n");
+                  var retv = tmp0[0].trim();
+                  if(charcheck.length>2 && retv == tmp0[1].trim()){ res(retv); }
+                  else{res(false);}
                 }
               }else if(charcheck.charCodeAt(0)==32){
-                tmp+=String(ds);
+                flg = false;
+                tmp+=dstmp;
                 if(charcheck.length==tmp.length){
                   if(charcheck==tmp){res(true);}
                   else{res(false);}
                 }
               }
-            });//-this.streamSendkeys
+            }
+          });//-this.streamSendkeys
         });
-      }else{ return false; }
+      }else{ return new Promise(res=>{res(false)});}
     }
     streamcli(options,cb){
       if(this.sshconn.active!==true || !this.sshconn.stream){ return false;}
@@ -108,9 +116,7 @@ class Devnetclass {
                   varthis.streamSendkeys(input,{autoenter:false});
                 }
               });
-            }else{
-              varthis.streamSendkeys(input,{autoenter:false});
-            }
+            }else{ varthis.streamSendkeys(input,{autoenter:false}); }
           }else{
             if(input.charCodeAt(0)==10||input.charCodeAt(0)==13){
               if(cbflg){
@@ -167,7 +173,7 @@ class Devnetclass {
       if(!params.command){ return(false); }
       if (!params.credential && !this.sshconn.credential) { return(false); }
       else if (this.sshconn.credential) { params.credential = this.sshconn.credential; }
-      else { return(false); }
+      else if (!params.credential) { return(false); }
       if(!typeof this.sshconn == undefined || !typeof this.sshconn.stream == undefined){
         this.sshconn.stream.end();
         this.sshconn.end();
@@ -184,7 +190,7 @@ class Devnetclass {
       var t2 = this.t2;
       var vtest = {}.toString.call(datacb) === '[object Function]';
       this.openSshShell(sessparam,function(resconn){
-          resconn.exec(params.command, function(err, stream) {
+          resconn.exec(params.command,{pty: true}, function(err, stream) { //.exec(params.command, {pty: true} ,function(err, stream)
             if (err) {
               objerr.push(err);
               throw err;
@@ -271,6 +277,22 @@ class CiscoRouterdev extends Devnetclass{ //under construction.
     }
     this.ciscotemplate = require('./src/ciscotemplate');
   }
+  parseMAC(option){
+    var _datav = {
+      input:"show arp\n",
+      output:' '
+    }
+    if(typeof option=='undefined'){ option = { nextmarkerflg:true } }
+    _datav.classobj = this;
+    if(typeof option.format=='undefined'){ option.format = "xxxx-xxxx-xxxx"}
+    return new Promise(res=>{
+      fngetdata(_datav).then(_res=>{
+        var tmp=[];
+        for(elem of raw2arry(_res)){if(String(elem[3]).length>=12){tmp.push({ mac:formatMAC(elem[3],option.format),ip:elem[1],int:elem[5],age:elem[2] });} }
+        res(tmp);
+      });
+    });
+  }
   parseVersion(option){
     var _datav = {
       input:"show version\n",
@@ -279,7 +301,7 @@ class CiscoRouterdev extends Devnetclass{ //under construction.
     _datav.classobj = this;
     if(typeof option=='undefined'){
       option = {
-        hide:true,
+        hide:false,
         nextmarkerflg:true
       }
     }
@@ -303,13 +325,15 @@ class CiscoSWdev extends Devnetclass{ //under construction.
       input:["show arp\n","show mac\n"],
       output:[' ',' ']
     }
-    if(typeof option=='undefined'){ option = { nextmarkerflg:true } }
     _datav.classobj = this;
+    if(typeof option.format=='undefined'){ option.format = "xxxx-xxxx-xxxx"}
     return new Promise(res=>{
       fngetdata(_datav).then(_res=>{
-        console.log(raw2arry(_res[0]));
-        console.log(raw2arry(_res[1],{filter:'-'}));
-        res(true);
+        var tmp=[];
+        for(elem of raw2arry(_res[0])){if(String(elem[3]).length>=12){tmp.push({ mac:formatMAC(elem[3],option.format),ip:elem[1],int:elem[5],age:elem[2] });} }
+        var tmp2=[];
+        for(elem2 of raw2arry(_res[1],{filter:'-'})){ if(String(elem2[0]).length>=14 && elem2[2]!==undefined) { tmp2.push({ mac:formatMAC(elem2[0],option.format),int:elem2[3],vlan:elem2[2]});} }
+        res({arp:tmp,mac:tmp2});
       });
     });
   }
@@ -321,7 +345,7 @@ class CiscoSWdev extends Devnetclass{ //under construction.
     _datav.classobj = this;
     if(typeof option=='undefined'){
       option = {
-        hide:true,
+        hide:false,
         nextmarkerflg:true
       }
     }
@@ -338,6 +362,88 @@ class HpSWdev extends Devnetclass{
       super(_model);
       if (_model.id) { this.id = _model.id; }
     }
+  }
+  parseMAC(option){
+    var _datav = {
+      input:["disp arp\n","disp mac-add\n"],
+      output:[' ',' ']
+    }
+    _datav.classobj = this;
+    if(typeof option.format=='undefined'){ option.format = "XXXX-XXXX-XXXX"}
+    if(typeof option.json=='undefined'){ option.json = true}
+    option.isidle = "\n\n\n";
+    option.isidle2 = "\n\n\n";
+    option.nextmarker='--- More ---';
+    option.nextmarkerflg=true;
+    option.dump=true;
+    option.getrawflag=true;
+    return new Promise(res=>{
+      fngetdata(_datav,option).then(_res=>{
+        if(option.json==true){
+          var tmp=quickipcheck(_res[0].dumpdata);//raw2arry(_res[0].dumpdata);
+          var tmp2 = [];
+          for (elem3 of tmp){
+            if(elem3.c>1){
+                var tmp3 = [];
+                var cflg = false;
+                var elem4;
+                var ctx = 0;
+                 for(elem4 of elem3.a){
+                   if(elem4.indexOf(elem3.b[ctx])!==-1){
+                     if(tmp3.length>0){ tmp2.push({a:tmp3,b:elem3.b[ctx],c:-1})}
+                     tmp3 = [];
+                     cflg = true
+                     ctx++;
+                   }
+                   if(cflg && String(elem4).trim().length>0){ tmp3.push(elem4); }
+                 }
+                 if(tmp3.length>0){ tmp2.push({a:tmp3,b:elem3.b[ctx],c:-1})}
+            }else{
+              if(elem3.a.length>6){
+                var tmp3 = [];
+                var cflg = false;
+                var elem4;
+                for(elem4 of elem3.a){
+                  if(elem4.indexOf(elem3.b[0])!==-1){
+                      tmp3.push(elem3.b[0]);
+                      tmp3.push(elem4.replace(new RegExp(elem3.b[0], "g"), ""));
+                    cflg = true;
+                  }else if(cflg){
+                    tmp3.push(elem4);
+                  }
+                }
+                tmp2.push({a:tmp3,b:elem3.b,c:elem3.c});
+              }else{ tmp2.push(elem3); }
+            }
+          }
+          var tmp4 = [];
+          try {
+            for(elem of tmp2){
+              if(elem.a.length==6){
+                tmp4.push({ mac:formatMAC(elem.a[1],option.format),ip:elem.a[0],int:elem.a[3],age:elem.a[4],vid:elem.a[2],type:elem.a[5]});
+              }else{
+                var x = {};
+                x.others=[];
+                if(elem.a[6]=='----' && elem.a[7]=='More'){
+                  tmp4.push({ mac:formatMAC(elem.a[1],option.format),ip:elem.a[0],int:elem.a[3],age:elem.a[4],vid:elem.a[2],type:elem.a[5]});
+                }else{
+                  for(elem2 of elem.a){
+                    if(elem2.indexOf('.')!==-1){ x.ip = elem2; }
+                    else if(elem2.indexOf('/')!==-1){ x.int = elem2 }
+                    else if(elem2.length>12 && elem2.indexOf('-')!==-1){ x.mac = formatMAC(elem2,option.format); }
+                    else{ x.others.push(elem2); }
+                  }
+                }
+                tmp4.push(x);
+              }
+            }
+          } catch (e) { tmp4 = tmp2; }
+          var tmp5 = [];
+          for(elem2 of raw2arry(_res[1].dumpdata)){ if(String(elem2[0]).length>=14 && elem2[2]!==undefined) { tmp5.push({ mac:formatMAC(elem2[0],option.format),int:elem2[3],vlan:elem2[1]});} }
+          res({arp:tmp4,mac:tmp5});
+        }else{ res(_res); }
+      });
+    });
   }
 }
 //Aruba Device Class Template Definition
@@ -383,7 +489,7 @@ function checkCred(_cred,cb){
     }else{cb(false);}
   }
 }
-function fnver(_datav,option,val){
+function fnver(_datav,option,val){  //consider renaming to cisco fnver
   return new Promise(res0=>{
     if (typeof option.json === "undefined"){option.json = true}
     if (typeof option.nextmarkerflg === "undefined"){option.nextmarkerflg = true}
@@ -441,63 +547,86 @@ function fngetdata(datastr,option,morecb){
       if (typeof option.hide === "undefined"){option.hide = true}
       if (typeof option.nextmarkerflg === "undefined"){option.nextmarkerflg = false}
       if (typeof option.nextmarkercomm === "undefined"){option.nextmarkercomm = ' '}
+      if(typeof option.isidle === "undefined"){option.isidle = '\n\n'}
+      if(typeof option.isidle2 === "undefined"){option.isidle2 = '\n\n'}
+      if(typeof option.delay === "undefined"){option.delay = 0}
+      if(typeof option.dump === "undefined"){option.dump = false}
+      if(typeof option.getrawflag === "undefined"){option.getrawflag = option.dump}
       var tmpstr = "";
       var endflg=true;
+      var fnflg = true;
+      var rawdata = ""
       classobj.sshconn.busy = true;
-      classobj.isIdle().then(hostind=>{
+      classobj.isIdle(option.isidle).then(hostind=>{
           if(hostind!==false){
-          classobj.streamSendkeys(datastr.input,{autoenter:false,emit:true}).on('data',(ds)=>{
-            tmpstr = String(ds).trim();
-            if(tmpstr.length>2){
-                dumptmp.push(ds);
-                if(!option.hide){process.stdout.write(ds);}
-                if(tmpstr.indexOf(option.nextmarker)!==-1 && option.nextmarkerflg){
-                  endflg=false;
-                  dumptmp2.push(tmpstr);
-                  if(morecbflg){ morecb(ds); }
-                  classobj.streamSendkeys(option.nextmarkercomm,{autoenter:false,emit:false});
-                }else if(tmpstr.indexOf(datastr.output)!==-1){
-                  endflg=false;
-                  if(option.nextmarkerflg==true){
-                    dumptmp2.push(tmpstr);
-                    if(tmpstr.indexOf(hostind)!==-1){ classobj.streamSendkeys(option.nextmarkercomm+'\n',{autoenter:false,emit:false}); }
-                  }else{
-                    if(option.dump==true){ res({data:ds,dumpdata:dumptmp}) }
-                    else{ res(ds); }
-                  }
-                }else if(option.uppercase==true){
-                  if(tmpstr.toUpperCase().indexOf(datastr.output.toUpperCase())!==-1){
-                    endflg=false;
-                    if(option.nextmarkerflg==true){
+          setTimeout(()=>{
+            classobj.streamSendkeys(datastr.input,{autoenter:false,emit:true}).on('data',(ds)=>{
+              if(fnflg){
+                tmpstr = String(ds).trim();
+                if(tmpstr.length>2 && tmpstr.indexOf('\u001b[16D')==-1){
+                    if(option.getrawflag){rawdata+=String(ds)}
+                    else{ dumptmp.push(ds); }
+                    if(!option.hide){process.stdout.write(ds);}
+                    if(tmpstr.indexOf(option.nextmarker)!==-1 && option.nextmarkerflg){
+                      endflg=false;
                       dumptmp2.push(tmpstr);
-                      if(tmpstr.indexOf(hostind)!==-1){ classobj.streamSendkeys(option.nextmarkercomm+'\n',{autoenter:false,emit:false}); }
-                    }else{
-                      if(option.dump==true){
-                        res({data:ds,dumpdata:dumptmp})
-                      }else{ res(ds); }
-                    }
-                  }
-                }else if(tmpstr.indexOf(hostind)!==-1 && endflg==false){
-                  endflg=true;
-                  classobj.isIdle().then(teststr=>{
-                    classobj.sshconn.busy = false;
-                    if(hostind==teststr){
-                      if(option.dump==true){
-                        classobj.sshconn.prevlog = {data:dumptmp2,dumpdata:dumptmp,date:Date.now()};
-                        res({data:dumptmp2,dumpdata:dumptmp})
+                      if(morecbflg){ morecb(ds); }
+                      classobj.streamSendkeys(option.nextmarkercomm,{autoenter:false,emit:false});
+                    }else if(tmpstr.indexOf(datastr.output)!==-1){
+                      endflg=false;
+                      if(option.nextmarkerflg==true){
+                        dumptmp2.push(tmpstr);
+                        if(tmpstr.indexOf(hostind)!==-1){ classobj.streamSendkeys(option.nextmarkercomm+'\n',{autoenter:false,emit:false}); }
                       }else{
-                        classobj.sshconn.prevlog = {data:dumptmp2,date:Date.now()};
-                        res(dumptmp2);
+                        if(option.dump==true){
+                          if(option.getrawflag){
+                            res({data:ds,dumpdata:rawdata});
+                          }else{res({data:ds,dumpdata:dumptmp});}
+                        }else{ res(ds); }
                       }
-                    }else{
-                      classobj.sshconn.prevlog = {data:false,date:Date.now()};
-                      res(false);
+                    }else if(option.uppercase==true){
+                      if(tmpstr.toUpperCase().indexOf(datastr.output.toUpperCase())!==-1){
+                        endflg=false;
+                        if(option.nextmarkerflg==true){
+                          dumptmp2.push(tmpstr);
+                          if(tmpstr.indexOf(hostind)!==-1){ classobj.streamSendkeys(option.nextmarkercomm+'\n',{autoenter:false,emit:false}); }
+                        }else{
+                          if(option.dump==true){
+                            if(option.getrawflag){
+                              res({data:ds,dumpdata:rawdata});
+                            }else{res({data:ds,dumpdata:dumptmp});}
+                          }else{ res(ds); }
+                        }
+                      }
+                    }else if(tmpstr.indexOf(hostind)!==-1 && endflg==false){
+                      fnflg = false;
+                      endflg = true;
+                      classobj.isIdle(option.isidle2).then(teststr=>{
+                        classobj.sshconn.busy = false;
+                        if(hostind==teststr){
+                          if(option.dump==true){
+                            if(option.getrawflag){
+                              classobj.sshconn.prevlog = {data:dumptmp2,dumpdata:rawdata,date:Date.now()};
+                              res({data:ds,dumpdata:rawdata});
+                            }else{
+                              classobj.sshconn.prevlog = {data:dumptmp2,dumpdata:dumptmp,date:Date.now()};
+                              res({data:ds,dumpdata:dumptmp});
+                            }
+                          }else{
+                            classobj.sshconn.prevlog = {data:dumptmp2,date:Date.now()};
+                            res(dumptmp2);
+                          }
+                        }else{
+                          classobj.sshconn.prevlog = {data:false,date:Date.now()};
+                          res(false);
+                        }
+                      });
                     }
-                  });
-                }
-                if(morecbflg){ morecb(ds); }
-            }
-          });//-classobj.streamSendkeys
+                    if(morecbflg){ morecb(ds); }
+                }else if(option.getrawflag && tmpstr.indexOf('\u001b[16D')==-1 ){rawdata+=String(ds)}
+              }
+            });//-classobj.streamSendkeys
+          },option.delay);
         }
       });//-classobj.isIdle().then(hostind
     }
@@ -509,7 +638,9 @@ function raw2arry(val,option){
   else if(typeof option.clean==='undefined'){option.clean=true}
   if(valtype === '[object Array]'){
     var tmp = [];
-    for (elem of val){ if(elem.trim()!==""){ tmp.push(raw2arry(elem,option)) } }
+    for (elem of val){
+      if(elem.trim()!==""){ tmp.push(raw2arry(elem,option)); }
+    }
     return tmp;
   }else if(valtype === '[object String]'){
     if(val.indexOf('\n')!==-1){
@@ -520,7 +651,7 @@ function raw2arry(val,option){
       }else{return raw2arry(spltdt(val),option);}
     }
     else{
-      var tmp2 = val.replace(/(\t)/g, " ").replace(/(   )/g, "").replace(/(  )/g, " ").replace(/(  )/g, " ");
+      var tmp2 = val.replace(/(\t)/g, " ").replace(/(   )/g, " ").replace(/(  )/g, " ").replace(/(  )/g, " ");
       if(typeof option.filter=='string'){tmp2 = tmp2.replace(new RegExp(option.filter, "g"), "");}
       if(option.clean){
         var tmp3 = [];
@@ -534,7 +665,7 @@ function spltdt(strdata,dchar){
   if(typeof dchar ==='undefined'){dchar='\r\n';}
   var tmparry = "";
   try {
-    strdata = String(strdata).replace(/[\x00-\x08]/g, "");
+    strdata = String(strdata).replace(/[\x00-\x08]/g, "").replace(/(\n\n)/g,'\n');
     var arry2 = [];
     if(strdata.trim().indexOf(dchar)!==-1){
       tmparry = strdata.split(dchar);
@@ -639,4 +770,42 @@ function arry2json(obj,id){
   }
   return result;
 }
-module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry}};
+function formatMAC(val,format){
+  if ({}.toString.call(val)==='[object String]' && {}.toString.call(format)==='[object String]'){
+    var tmp = "";
+    var ctr=-1;
+    for (c of format){
+      if(c=='x'||c=='X'){
+        var x="";
+        do{
+          ctr++;
+          x = val.charAt(ctr);
+        }while((x =='.' || x=='-' || x==':')&&ctr<val.length);
+        if(c=='x'){ tmp+=x; }
+        else{ tmp+=x.toUpperCase(); }
+      }else{ tmp+=c }
+    }
+    return tmp;
+  }else{ return val; }
+}
+function quickipcheck(objstr){
+  if ({}.toString.call(objstr)!=='[object String]'){return null}
+  var arrytmp = [];
+  for (elem of raw2arry(objstr)){
+    var ctr = 0;
+    var iplist = [];
+    for (elem2 of elem){
+      var tval = String(elem2).match(/(.|..|...)\.(.|..|...)\.(.|..|...)\.(...|..|.)/g);
+      if(elem2==tval){
+        ctr++;
+        iplist.push(elem2);
+      }else if(tval!==null){
+        ctr++;
+        iplist.push(String(tval));
+      }
+    }
+    if(ctr>0){arrytmp.push({a:elem,b:iplist,c:ctr});}
+  }
+  return arrytmp;
+}
+module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck}};
