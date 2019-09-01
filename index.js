@@ -58,7 +58,7 @@ class Devnetclass {
                   if(charcheck==tmp){res(true);}
                   else{res(false);}
                 }
-              }
+              }else if(dstmp.length>120){ this.streamSendkeys('\n\n\n',{autoenter:false,emit:false}); }
             }
           });//-this.streamSendkeys
         });
@@ -320,20 +320,42 @@ class CiscoSWdev extends Devnetclass{ //under construction.
     }
     this.ciscotemplate = require('./src/ciscotemplate');
   }
-  parseMAC(option){
-    var _datav = {
-      input:["show arp\n","show mac\n"],
-      output:[' ',' ']
+  parsePOE(option){
+    let _datav = {
+      input:'show power inline\n',
+      output:' '
     }
     _datav.classobj = this;
     if(typeof option.format=='undefined'){ option.format = "xxxx-xxxx-xxxx"}
+    if (this.ciscotemplate.JSONparsePOE){
+      var outputFormat = this.ciscotemplate.JSONparsePOE || {key:['int','admin','op','power','device','class','max'],indxv:[0,1,2,3,4,5,6]}
+    }
     return new Promise(res=>{
-      fngetdata(_datav).then(_res=>{
+      fngetdata(_datav,{nextmarkerflg:true}).then(_res=>{
         var tmp=[];
-        for(elem of raw2arry(_res[0])){if(String(elem[3]).length>=12){tmp.push({ mac:formatMAC(elem[3],option.format),ip:elem[1],int:elem[5],age:elem[2] });} }
-        var tmp2=[];
-        for(elem2 of raw2arry(_res[1],{filter:'-'})){ if(String(elem2[0]).length>=14 && elem2[2]!==undefined) { tmp2.push({ mac:formatMAC(elem2[0],option.format),int:elem2[3],vlan:elem2[2]});} }
-        res({arp:tmp,mac:tmp2});
+        for(elem of arrym2s(raw2arry(_res,{clean:true,filter:'-'}),1)){ if(String(elem[0]).length>=5 && elem[0].indexOf('/')!==-1 && elem[3]!==undefined && elem[5]!==undefined){tmp.push({ [outputFormat.key[0]]:elem[outputFormat.indxv[0]],[outputFormat.key[1]]:elem[outputFormat.indxv[1]],[outputFormat.key[2]]:elem[outputFormat.indxv[2]],[outputFormat.key[3]]:elem[outputFormat.indxv[3]],[outputFormat.key[4]]:elem[outputFormat.indxv[4]],[outputFormat.key[5]]:elem[outputFormat.indxv[5]],[outputFormat.key[6]]:elem[outputFormat.indxv[6]] });} }
+        res(tmp);
+      });
+    });
+  }
+  parseMAC(option){
+    let _datav = {
+      input:["show arp\n","show mac add\n"],
+      output:[' ',' ']
+    }
+    _datav.classobj = this;
+    if(typeof option=='undefined'){option = {json:true}}
+    if(typeof option.format=='undefined'){ option.format = "xxxx-xxxx-xxxx"}
+    return new Promise(res=>{
+      fngetdata(_datav,{nextmarkerflg:true}).then(_res=>{
+        if(option.json){
+          let tmp=[];
+          for(elem of arrym2s(raw2arry(_res[0],{clean:true,filter:'-'}),1)){if(String(elem[3]).length>=12){tmp.push({ mac:formatMAC(elem[3],option.format),ip:elem[1],int:elem[5],age:elem[2] });} }
+          let tmp2=[];
+          for(elem2 of arrym2s(raw2arry(_res[1],{clean:true,filter:'-'}),1)){ 
+            if(String(elem2[1]).length>=14 && elem2[0]!==undefined) { tmp2.push({ mac:formatMAC(elem2[1],option.format),int:elem2[3],vlan:elem2[0],type:elem2[2]});} }
+          res({arp:tmp,mac:tmp2});
+        }else{res(_res);}
       });
     });
   }
@@ -350,8 +372,11 @@ class CiscoSWdev extends Devnetclass{ //under construction.
       }
     }
     if (typeof option.fileref === "undefined"){ this.localtemplate = this.ciscotemplate }
-    else if({}.toString.call( option.fileref)==='[object Object]'){this.localtemplate = option.fileref}
-    else{ this.localtemplate = require(option.fileref); }
+    else if({}.toString.call( option.fileref)==='[object String]'){ this.localtemplate = require(option.fileref); }
+    else{
+      if (option.fileref.getversion){ this.localtemplate = option.fileref }
+      else{ this.localtemplate = { getversion:option.fileref } }
+    }
     return fnver(_datav,option,this.localtemplate.getversion);
   }
 }//-CiscoSWdev class
@@ -362,6 +387,32 @@ class HpSWdev extends Devnetclass{
       super(_model);
       if (_model.id) { this.id = _model.id; }
     }
+    this.hpswtemplate = require('./src/hpswtemplate');
+  }
+  parseVersion(option){
+    var _datav = {
+      input:"disp version\n",
+      output:" "
+    }
+    _datav.classobj = this;
+    option = {
+      hide:true,
+      nextmarkerflg:true,
+      isidle : "\n\n\n",
+      isidle2 : "\n\n\n",
+      dump:true,
+      getrawflag:true,
+      nextmarkerflg:true,
+      nextmarker:'--- More ---',
+      fileref:option.fileref
+    }
+    if (typeof option.fileref === "undefined"){ this.localtemplate = this.hpswtemplate }
+    else if({}.toString.call( option.fileref)==='[object String]'){ this.localtemplate = require(option.fileref); }
+    else{
+      if (option.fileref.getversion){ this.localtemplate = option.fileref }
+      else{ this.localtemplate = {getversion:option.fileref} }
+    }
+    return fnver(_datav,option,this.localtemplate.getversion);
   }
   parseMAC(option){
     var _datav = {
@@ -369,7 +420,7 @@ class HpSWdev extends Devnetclass{
       output:[' ',' ']
     }
     _datav.classobj = this;
-    if(typeof option.format=='undefined'){ option.format = "XXXX-XXXX-XXXX"}
+    if(typeof option.format=='undefinecdcdd'){ option.format = "XXXX-XXXX-XXXX"}
     if(typeof option.json=='undefined'){ option.json = true}
     option.isidle = "\n\n\n";
     option.isidle2 = "\n\n\n";
@@ -381,7 +432,7 @@ class HpSWdev extends Devnetclass{
       fngetdata(_datav,option).then(_res=>{
         if(option.json==true){
           var tmp=quickipcheck(_res[0].dumpdata);//raw2arry(_res[0].dumpdata);
-          var tmp2 = [];
+          let tmp2 = [];
           for (elem3 of tmp){
             if(elem3.c>1){
                 var tmp3 = [];
@@ -416,35 +467,36 @@ class HpSWdev extends Devnetclass{
               }else{ tmp2.push(elem3); }
             }
           }
-          var tmp4 = [];
+          let tmp4 = [];
           try {
             for(elem of tmp2){
               if(elem.a.length==6){
                 tmp4.push({ mac:formatMAC(elem.a[1],option.format),ip:elem.a[0],int:elem.a[3],age:elem.a[4],vid:elem.a[2],type:elem.a[5]});
               }else{
-                var x = {};
-                x.others=[];
+
                 if(elem.a[6]=='----' && elem.a[7]=='More'){
                   tmp4.push({ mac:formatMAC(elem.a[1],option.format),ip:elem.a[0],int:elem.a[3],age:elem.a[4],vid:elem.a[2],type:elem.a[5]});
                 }else{
+                  let x = {};
+                  x.others=[];
                   for(elem2 of elem.a){
                     if(elem2.indexOf('.')!==-1){ x.ip = elem2; }
                     else if(elem2.indexOf('/')!==-1){ x.int = elem2 }
                     else if(elem2.length>12 && elem2.indexOf('-')!==-1){ x.mac = formatMAC(elem2,option.format); }
                     else{ x.others.push(elem2); }
                   }
+                  tmp4.push(x);
                 }
-                tmp4.push(x);
               }
             }
           } catch (e) { tmp4 = tmp2; }
-          var tmp5 = [];
+          let tmp5 = [];
           for(elem2 of raw2arry(_res[1].dumpdata)){ if(String(elem2[0]).length>=14 && elem2[2]!==undefined) { tmp5.push({ mac:formatMAC(elem2[0],option.format),int:elem2[3],vlan:elem2[1]});} }
           res({arp:tmp4,mac:tmp5});
         }else{ res(_res); }
       });
     });
-  }
+  } //-parseMAC
 }
 //Aruba Device Class Template Definition
 class ArubaIAPdev extends Devnetclass{
@@ -453,6 +505,45 @@ class ArubaIAPdev extends Devnetclass{
       super(_model);
       if (_model.id) { this.id = _model.id; }
     }
+    this.arubaIAPtemplate = require('./src/arubaIAPtemplate');
+  }
+  parseMAC(option){
+    var _datav = {
+      input:"show arp\n",
+      output:' '
+    }
+    _datav.classobj = this;
+    if(typeof option.format=='undefined'){ option.format = "xxxx-xxxx-xxxx"}
+    return new Promise(res=>{
+      fngetdata(_datav,{isidle:'\n\n\n',isidle2 : "\n\n\n",dump:true,multiemit:true}).then(_res=>{
+        if(option.json){
+          var tmp=[];
+          for(elem of raw2arry(_res.dumpdata)){if(String(elem[3]).length>=12){tmp.push({ mac:formatMAC(elem[3],option.format),ip:elem[0],int:elem[5],flags:elem[2] });} }
+          res({arp:tmp});
+        }else{
+          res(_res.dumpdata);
+        }
+      });
+    });
+  }
+  parseVersion(option){
+    var _datav = {
+      input:"show version\n",
+      output:" "
+    }
+    _datav.classobj = this;
+    if(typeof option=='undefined'){
+      option = {
+        hide:false,
+        nextmarkerflg:true
+      }
+    }
+    option.isidle = "\n\n\n";
+    option.isidle2 = "\n\n\n";
+    if (typeof option.fileref === "undefined"){ this.localtemplate = this.arubaIAPtemplate }
+    else if({}.toString.call( option.fileref)==='[object Object]'){this.localtemplate = option.fileref}
+    else{ this.localtemplate = require(option.fileref); }
+    return fnver(_datav,option,this.localtemplate.getversion);
   }
 }
 //Talari Device Class Template Definition
@@ -494,7 +585,10 @@ function fnver(_datav,option,val){  //consider renaming to cisco fnver
     if (typeof option.json === "undefined"){option.json = true}
     if (typeof option.nextmarkerflg === "undefined"){option.nextmarkerflg = true}
       fngetdata(_datav,option).then(res=>{
-        return new Promise(res2=>{ res2(extractstr(res,val)); });
+        return new Promise(res2=>{
+          if(option.getrawflag){ res2(extractstr(res.dumpdata,val)); }
+          else{ res2(extractstr(res,val)); }
+        });
       }).then(res3=>{
         if(option.json==true){
           var tmpv = arry2json(res3);
@@ -516,9 +610,10 @@ async function fngetdata2(datastr,option,morecb){
       var tempvar = [];
       for(i =0;i<inptlen;i++){
         await new Promise(next=> {
+          let otmp = datastr.output[i] || ' ';
           objtmp={
             input:datastr.input[i],
-            output:datastr.output[i],
+            output:otmp,
             classobj:datastr.classobj
           }
           fngetdata(objtmp,option).then(result=>{
@@ -579,9 +674,11 @@ function fngetdata(datastr,option,morecb){
                         if(tmpstr.indexOf(hostind)!==-1){ classobj.streamSendkeys(option.nextmarkercomm+'\n',{autoenter:false,emit:false}); }
                       }else{
                         if(option.dump==true){
-                          if(option.getrawflag){
-                            res({data:ds,dumpdata:rawdata});
-                          }else{res({data:ds,dumpdata:dumptmp});}
+                          if(option.multiemit==true){ if(tmpstr.indexOf(hostind)!==-1){ classobj.streamSendkeys(' \n',{autoenter:false,emit:false}); } }
+                          else{
+                            if(option.getrawflag){ res({data:ds,dumpdata:rawdata}); }
+                            else{res({data:ds,dumpdata:dumptmp});}
+                          }
                         }else{ res(ds); }
                       }
                     }else if(option.uppercase==true){
@@ -808,4 +905,16 @@ function quickipcheck(objstr){
   }
   return arrytmp;
 }
-module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck}};
+function arrym2s(arry,lvl){
+  if(typeof lvl =='undefined'){ lvl = -1}
+  if ({}.toString.call(arry)=='[object Array]'){
+    let tmp1 = [];
+    for (let elem of arry){
+      if ({}.toString.call(elem)=='[object Array]' && lvl !== 0 && lvl !== -10000 ){
+         tmp1 = tmp1.concat(arrym2s(elem,lvl - 1));
+      }else{ tmp1.push(elem); }
+    }
+    return tmp1;
+  }else{return arry}
+}
+module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s}};

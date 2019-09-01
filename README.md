@@ -166,7 +166,7 @@ var loginparam = {
       host: '<hostname or IP>',
       port: 22,
       username: '<your-username-here>',
-      password: '<pwd>'
+      password: '<pwd>',
       algorithms: {
         cipher: [ '3des-cbc' ],
         kex: [ "diffie-hellman-group1-sha1" ]
@@ -246,7 +246,7 @@ var loginparam = {
       host: '<hostname or IP>',
       port: 22,
       username: '<your-username-here>',
-      password: '<pwd>'
+      password: '<pwd>',
       algorithms: {
         cipher: [ '3des-cbc' ],
         kex: [ "diffie-hellman-group1-sha1" ]
@@ -312,7 +312,7 @@ option{
   format:'XXXX-xxxx-XXXX' // 'X' for uppercase and 'x' for lower case, other symbols are supported e.g. 'XXXX:xx-xx.XXXX'
 }
 sampledev1 = new devnet.HpSwitch({id:"any string here"});   //HPE SWITCH EXAMPLE
-sampledev1.parseVersion(option) //returns a promise
+sampledev1.parseMAC(option) //returns a promise
 ```
 
 ```js
@@ -375,6 +375,7 @@ devtools.keyval(key,value) // returns JSON object of key and value pair.
 devtools.raw2arry() //
 devtools.formatMAC()  //
 devtools.quickipcheck(String) // Check String if there is an IPADDR pattern then  convert string into JSON
+devtools.arrym2s(Arrays,level) // Iterate over the input multi dimension array then returns a single dimension array. ex. console.log(devtools.arrym2s([[1,2,3],['a',1,2,'h',[{as:'as'},['1k','2k']]]]))
 ```
 
 ### str2Arry function
@@ -390,3 +391,5 @@ devtools.quickipcheck(String) // Check String if there is an IPADDR pattern then
 ### formatMAC function
 
 ### quickipcheck function
+
+### arrym2s function

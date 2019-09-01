@@ -20,4 +20,5 @@ const getversion=[
 const getinterface=[
 
 ];
-module.exports = {getversion:getversion,getinterface:getinterface}
+const JSONparsePOE = {key:['int','admin','op','power','device','class','max'],indxv:[0,1,2,3,4,5,6]}
+module.exports = {getversion:getversion,getinterface:getinterface,JSONparsePOE:JSONparsePOE}
