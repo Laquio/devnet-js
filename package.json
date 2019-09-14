@@ -1,6 +1,6 @@
 {
   "name": "devnet-js",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Automation and DevOps scripting templates for network devices.",
   "main": "index.js",
   "scripts": {

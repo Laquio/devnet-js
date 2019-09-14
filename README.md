@@ -370,26 +370,145 @@ var devnet = require('devnet-js');
 const devtools = devnet.tools;
 
 devtools.str2Arry(String,Token)  // returns array of string, sanitize unwanted '\n', '\r' and '\b' split string with token
-devtools.extractstr() //
+devtools.extractstr(rawstring,reference_arrays) //parse or format string using reference array(s) then converts into json
 devtools.keyval(key,value) // returns JSON object of key and value pair.
-devtools.raw2arry() //
-devtools.formatMAC()  //
+devtools.arry2json(arry)//convert multiple array of json into single json formal
+devtools.raw2arry(string,option) // convert string separated by space or tabs into arrays.
+devtools.formatMAC(mac_string,format)  //format MAC Address, ex. xxxx-XXXX-XXxx.
 devtools.quickipcheck(String) // Check String if there is an IPADDR pattern then  convert string into JSON
 devtools.arrym2s(Arrays,level) // Iterate over the input multi dimension array then returns a single dimension array. ex. console.log(devtools.arrym2s([[1,2,3],['a',1,2,'h',[{as:'as'},['1k','2k']]]]))
+devtools.jsonmerge(json1 | [json_array],json2) //concat 2 or more json ex. console.log(devnet.tools.jsonmerge({a:"a1",b:"b1",c:"c1",x:1},{a:"a 2",b2:"b 2",c_1:"c 2",d:"d1"})); //console.log(devnet.tools.jsonmerge([{a:"a1",b:"b1",c:"c1",x:1},{a:"a 2",b2:"b 2",c_1:"c 2",d:"d1"},{q:'q123'}]));
 ```
 
 ### str2Arry function
+```js
+var devnet = require('devnet-js');
+const devtools = devnet.tools;
+let strvar = "a b c d \n a1 b1\tc1 d1 \n a2 b2 c2 d2"
 
+console.log("result: ",devtools.str2Arry(strvar));
+// result:  [ 'a b c d', 'a1 b1 c1 d1', 'a2 b2 c2 d2' ]
+console.log("result: ",devtools.str2Arry(strvar,'\t'));
+//result:  [ 'a b c d \n a1 b1', 'c1 d1 \n a2 b2 c2 d2' ]
+```
 ### extractstr function
-
+```js
+var devnet = require('devnet-js');
+const devtools = devnet.tools;
+let strvar = "a b c d \n a1 b1 c1 d1 \n a2 b2 c2 d2"
+let arry = [strvar,'the quick brown fox','jumps over the','lazy dog']
+console.log("result1: ",devtools.extractstr(arry,['lazy','quick']));
+console.log("\nresult2: ",devtools.extractstr(arry,['c2','brown','fox','over','a1','dog']));
+//result1:  [ [ { quick: 'the quick brown fox' } ], [ { lazy: 'lazy dog' } ] ]
+//result2:  [
+//  [ { a1: 'a1 b1 c1 d1' } ],
+//  [ { c2: 'a2 b2 c2 d2' } ],
+//  [ { brown: 'the quick brown fox' },
+//    { fox: 'the quick brown fox' } ],
+//  [ { over: 'jumps over the' } ],
+//  [ { dog: 'lazy dog' } ]
+//]
+```
 ### keyval function
-
+```js
+var devnet = require('devnet-js');
+const devtools = devnet.tools;
+console.log("result1: ",devtools.keyval('abc','123'));
+console.log("result2: ",devtools.keyval('123','{a:1,b:2,c:3}'));
+//result1:  { abc: '123' }
+//result2:  { '123': '{a:1,b:2,c:3}' }
+```
 ### arry2json function
-
+```js
+var devnet = require('devnet-js');
+const devtools = devnet.tools;
+let arry = [
+  [ { Version: 'GPL code under the terms of GPL Version 2.0.  For more details, see the' } ],
+  [ { 'ROM:': 'ROM: IOS-XE ROMMON' } ],
+  [ { uptime: 'rtr1 uptime is 1 week, 5 days, 20 hours, 56 minutes' } ],
+  [ { System_image_file: 'System image file is `bootflash:isr4300-universalk9.16.03.08.SPA.bin`' } ],
+  [ { reload_reason: 'Last reload reason: PowerOn' } ],
+  [ { image: 'System image file is `bootflash:isr4300-universalk9.16.03.08.SPA.bin`' },{ image: 'test string' } ]
+]
+console.log("result: ",devtools.arry2json(arry));
+/*
+result:  { Version: 'GPL code under the terms of GPL Version 2.0.  For more details, see the',
+  'ROM:': 'ROM: IOS-XE ROMMON',
+  uptime: 'rtr1 uptime is 1 week, 5 days, 20 hours, 56 minutes',
+  System_image_file: 'System image file is `bootflash:isr4300-universalk9.16.03.08.SPA.bin`',
+  reload_reason: 'Last reload reason: PowerOn',
+  image: 'System image file is `bootflash:isr4300-universalk9.16.03.08.SPA.bin`',
+  image6: 'test string' }
+*/
+```
 ### raw2arry function
-
+```js
+var devnet = require('devnet-js');
+const devtools = devnet.tools;
+let strvar = "a b c d \n a1 b1 c1 d1 \n a2 b2 c2 d2"
+let arry = [strvar,'the quick brown fox','jumps over the','lazy dog']
+console.log("result: ",devtools.raw2arry(arry));
+/*
+result:  [
+  [ [ 'a', 'b', 'c', 'd' ],
+    [ 'a1', 'b1', 'c1', 'd1' ],
+    [ 'a2', 'b2', 'c2', 'd2' ]
+  ],
+  [ 'the', 'quick', 'brown', 'fox' ],
+  [ 'jumps', 'over', 'the' ],
+  [ 'lazy', 'dog' ]
+]
+*/
+```
 ### formatMAC function
-
+```js
+var devnet = require('devnet-js');
+const devtools = devnet.tools;
+let strvar = "abcd-12ff-9ae6"
+console.log("result: ",devtools.formatMAC(strvar,'Xxxx:xxXX-XXXX')); //result:  Abcd:12FF-9AE6
+console.log("result: ",devtools.formatMAC("11aa:bb22:cc33",'xx:Xx:xx:XX:XX:XX')); // result:  11:Aa:bb:22:CC:33
+```
 ### quickipcheck function
-
+```js
+var devnet = require('devnet-js');
+const devtools = devnet.tools;
+let strvar = "the quick brown 1.2.3.x  jumps over 7.7.7.7 \n the lazy dog 4.x.x.2"
+console.log("result: ",devtools.quickipcheck(strvar));
+/*
+result:  [
+  { a: [ 'the', 'quick', 'brown', '1.2.3.x', 'jumps', 'over', '7.7.7.7' ],
+    b: [ '1.2.3.x', '7.7.7.7' ],
+    c: 2 },
+  { a: [ 'the', 'lazy', 'dog', '4.x.x.2' ],
+    b: [ '4.x.x.2' ],
+    c: 1 }
+  ]
+*/
+```
 ### arrym2s function
+```js
+var devnet = require('devnet-js');
+const devtools = devnet.tools;
+let arry = [
+  ['a1',2,3],
+  [0,100,200,300],
+  [['a2','b2','c2',['yes','no']],'d']
+]
+console.log("result: ",devtools.arrym2s(arry)); //result:  [ 'a1', 2, 3, 0, 100, 200, 300, 'a2', 'b2', 'c2', 'yes', 'no', 'd' ]
+console.log("result: ",devtools.arrym2s(arry,1));
+/*
+result:
+[ 'a1', 2, 3, 0, 100, 200, 300,
+ [ 'a2', 'b2', 'c2', [ 'yes', 'no' ] ],
+ 'd'
+]
+*/
+
+```
+### jsonmerge function
+```js
+var devnet = require('devnet-js');
+let arryobj = [{a:1,b:2},{c:3},{d:4}]
+console.log("result: ",devtools.jsonmerge(arryobj)); //result:  { a: 1, b: 2, c: 3, d: 4 }
+console.log("result: ",devtools.jsonmerge({obj1:'hi'},{obj2:' hello'})); //result:  { obj1: 'hi', obj2: ' hello' }
+```

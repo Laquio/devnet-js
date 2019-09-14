@@ -13,7 +13,7 @@ var loginparam = {
     }
   }
 sampledev1.openSshShell(loginparam);
-setTimeout(testfn, 2000); //Writing stream in a simple way some delay is required none common method; moments after openSshShell function.
+setTimeout(testfn, 5000); //Writing stream in a simple way some delay is required none common method; moments after openSshShell function.
 function testfn(){
     sampledev1.streamcli();    //sample CLI interaction //-hit Esc 2 times to exit process
 }
