@@ -235,7 +235,16 @@ option{
 }
 sampledev1.parseVersion(option) //returns a promise
 ```
+### list interface
 
+Returns an array object of interfaces.
+
+```js
+var option={ json:true }
+sampledev1.listif(option).then(res=>{     //example function
+  console.log("output:\n",res);
+});
+```
 
 Example:
 ```js
@@ -272,24 +281,16 @@ new Promise(_res=>{
     });
   }
 });
-
 ```
-
-### Parse arp entry
-
-```js
-```
-
-### Parse running interface
-
-```js
-```
-
 ## Cisco Switch
 
 ### Parse MAC address
-
+Returns a summary of MAC address entry.
 ```js
+var option={ json:true,format:'XXXX-xx:xx-XX.XX' }
+sampledev1.parseMAC(option).then(res=>{     //example function
+  console.log("output:\n",res);
+});
 ```
 
 ### Parse vlan
@@ -301,11 +302,18 @@ new Promise(_res=>{
 
 
 ### Parse poe
+Returns a summary of interface poe status.
 
 ```js
+var option={ json:true }       //Select between Array or JSON
+sampledev1.parsePOE(option).then(res=>{     //example function
+  console.log("output:\n",res);
+});
 ```
 
 ### Parse Mac Addr
+Returns a summary of MAC address entry.
+
 ```js
 option{
   json:true,  //[true || false ] default is true, formats the output into json.
@@ -348,6 +356,21 @@ new Promise(_res=>{
 });
 ```
 
+### Get LLDP neighbor info
+
+```js
+var option={
+      json:true,
+      stoptokens:false,
+      incending:false,
+      startinglines :'LLDP neighbor-info',
+      refarry:['Update time','Chassis type','Port ID','System name','Management address']
+    }
+    sampledev1.lldpneighbor(option).then(res=>{     //example function
+      console.log("output:\n",res);
+    });
+```
+
 ## Devnet-js Default Class options and parameter details
 
 ### Default class Constructor
@@ -378,6 +401,7 @@ devtools.formatMAC(mac_string,format)  //format MAC Address, ex. xxxx-XXXX-XXxx.
 devtools.quickipcheck(String) // Check String if there is an IPADDR pattern then  convert string into JSON
 devtools.arrym2s(Arrays,level) // Iterate over the input multi dimension array then returns a single dimension array. ex. console.log(devtools.arrym2s([[1,2,3],['a',1,2,'h',[{as:'as'},['1k','2k']]]]))
 devtools.jsonmerge(json1 | [json_array],json2) //concat 2 or more json ex. console.log(devnet.tools.jsonmerge({a:"a1",b:"b1",c:"c1",x:1},{a:"a 2",b2:"b 2",c_1:"c 2",d:"d1"})); //console.log(devnet.tools.jsonmerge([{a:"a1",b:"b1",c:"c1",x:1},{a:"a 2",b2:"b 2",c_1:"c 2",d:"d1"},{q:'q123'}]));
+devtools.getroute(string) // returns possible route in JSON format both destination and mask.
 ```
 
 ### str2Arry function
@@ -511,4 +535,10 @@ var devnet = require('devnet-js');
 let arryobj = [{a:1,b:2},{c:3},{d:4}]
 console.log("result: ",devtools.jsonmerge(arryobj)); //result:  { a: 1, b: 2, c: 3, d: 4 }
 console.log("result: ",devtools.jsonmerge({obj1:'hi'},{obj2:' hello'})); //result:  { obj1: 'hi', obj2: ' hello' }
+```
+### getroute function
+```js
+var devnet = require('devnet-js');
+let arryobj = ""
+
 ```

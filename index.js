@@ -341,6 +341,25 @@ class CiscoRouterdev extends Devnetclass{ //under construction.
     }
     this.ciscotemplate = require('./src/ciscotemplate');
   }
+  listif(option){
+    let _datav = {
+      input:"show ip int br\n",
+      output:' '
+    }
+    if(typeof option=='undefined'){ option = { nextmarkerflg:true } }
+    _datav.classobj = this;
+    if(option.include){ if(option.include.length >= 2){_datav.input = _datav.input.replace(/(\n)/g, "") + ' | inc ' +option.include + '\n'} }
+    return new Promise(res=>{
+      fngetdata(_datav).then(_res=>{
+        let tmp=[];
+        if(option.json){ for(elem of raw2arry(_res)){if(String(elem[0]).length>=6 && elem[1] !==undefined && elem[2] !==undefined){tmp.push({ int:elem[0],ip:elem[1],ok:elem[2],method:elem[3],status:elem[4],proto:elem[5]});} } }
+        else {
+          tmp = raw2arry(_res);
+        }
+        res(tmp);
+      });
+    });
+  }
   parseMAC(option){
     var _datav = {
       input:"show arp\n",
@@ -384,6 +403,25 @@ class CiscoSWdev extends Devnetclass{ //under construction.
       if (_model.id) { this.id = _model.id; }
     }
     this.ciscotemplate = require('./src/ciscotemplate');
+  }
+  listif(option){
+    let _datav = {
+      input:"show ip int br\n",
+      output:' '
+    }
+    if(typeof option=='undefined'){ option = { nextmarkerflg:true } }
+    _datav.classobj = this;
+    if(option.include){ if(option.include.length >= 2){_datav.input = _datav.input.replace(/(\n)/g, "") + ' | inc ' +option.include + '\n'} }
+    return new Promise(res=>{
+      fngetdata(_datav).then(_res=>{
+        let tmp=[];
+        if(option.json){ for(elem of raw2arry(_res)){if(String(elem[0]).length>=6 && elem[1] !==undefined && elem[2] !==undefined){tmp.push({ int:elem[0],ip:elem[1],ok:elem[2],method:elem[3],status:elem[4],proto:elem[5]});} } }
+        else {
+          tmp = raw2arry(_res);
+        }
+        res(tmp);
+      });
+    });
   }
   parsePOE(option){
     let _datav = {
@@ -455,6 +493,51 @@ class HpSWdev extends Devnetclass{
     }
     this.hpswtemplate = require('./src/hpswtemplate');
   }
+  listif(option){
+    let _datav = {
+      input:['display ip int br\n','display interface brief\n'],
+      output:[' ',' ']
+    }
+    _datav.classobj = this;
+    if(typeof option=='undefined'){ option = {}}
+    option.isidle = "\n\n\n";
+    option.isidle2 = "\n\n\n";
+    option.nextmarker='--- More ---';
+    option.nextmarkerflg=true;
+    option.dump=true;
+    option.getrawflag=true;
+    if(typeof option.format=='undefined'){ option.format = "xxxx-xxxx-xxxx"}
+    if(option.include){ if(option.include.length >= 2){_datav.input = _datav.input.replace(/(\n)/g, "") + ' | inc ' +option.include + '\n'} }
+    if (typeof option.fileref === "undefined"){ this.localtemplate = this.hpswtemplate }
+    else if({}.toString.call( option.fileref)==='[object String]'){ this.localtemplate = require(option.fileref); }
+    else{
+      if (option.fileref.getversion){ this.localtemplate = option.fileref }
+      else{ this.localtemplate = {getversion:option.fileref} }
+    }
+   let outputFormat = this.hpswtemplate.dispIPintbr || {key:['int','physical','proto','ip','desc'],indxv:[0,1,2,3,4]} 
+    return new Promise(res=>{
+      fngetdata(_datav,option).then(_res=>{
+        if(option.json==false){ res({ipint:raw2arry(_res[0].dumpdata,{clean:true,filter:'-'}),int:raw2arry(_res[1].dumpdata,{clean:true,filter:'-'})}); }
+        else{
+          let tmp=[];
+          for(elem of raw2arry(_res[0].dumpdata,{clean:true,filter:'-'})){ if(String(elem[0]).length>=5 && elem[0].indexOf('lan')!==-1 && elem[1]!==undefined && elem[3]!==undefined){tmp.push({ [outputFormat.key[0]]:elem[outputFormat.indxv[0]],[outputFormat.key[1]]:elem[outputFormat.indxv[1]],[outputFormat.key[2]]:elem[outputFormat.indxv[2]],[outputFormat.key[3]]:elem[outputFormat.indxv[3]],[outputFormat.key[4]]:elem[outputFormat.indxv[4]] });} }
+          outputFormat = this.hpswtemplate.JSONdispBridgeBr || {key:['int','link','speed','duplex','type','pvid','desc'],indxv:[0,1,2,3,4,5,6]}
+          for(elem of raw2arry(_res[1].dumpdata,{clean:true,filter:'-'})){
+            let tmp2 = String(elem[0]);
+            let desc = '';
+            desc = elem[6] || '';
+            if(elem[7]){ desc = desc + ' ' + elem[7] };
+            if(elem[8]){ desc = desc + ' ' + elem[8] };
+            if(elem[9]){ desc = desc + ' ' + elem[9] };
+            desc = desc.replace(/(")/g, '');
+            if(tmp2=='More'){ tmp.push({ [outputFormat.key[0]]:elem[outputFormat.indxv[0]+1],[outputFormat.key[1]]:elem[outputFormat.indxv[1]+1],[outputFormat.key[2]]:elem[outputFormat.indxv[2]+1],[outputFormat.key[3]]:elem[outputFormat.indxv[3]+1],[outputFormat.key[4]+1]:elem[outputFormat.indxv[4]],[outputFormat.key[5]]:elem[outputFormat.indxv[5]+1],[outputFormat.key[6]]:desc });
+            }else if(tmp2.length>=5 && elem[3]!==undefined && elem[5]!==undefined){ tmp.push({ [outputFormat.key[0]]:elem[outputFormat.indxv[0]],[outputFormat.key[1]]:elem[outputFormat.indxv[1]],[outputFormat.key[2]]:elem[outputFormat.indxv[2]],[outputFormat.key[3]]:elem[outputFormat.indxv[3]],[outputFormat.key[4]]:elem[outputFormat.indxv[4]],[outputFormat.key[5]]:elem[outputFormat.indxv[5]],[outputFormat.key[6]]:desc }); } 
+          }
+          res(tmp);
+        }
+      });
+    });
+  }//-listif
   parseVersion(option){
     var _datav = {
       input:"disp version\n",
@@ -588,7 +671,7 @@ class HpSWdev extends Devnetclass{
       fngetdata(_datav,option).then(_res=>{
         if(option.json==false){ res(raw2arry(_res.dumpdata,{clean:true,filter:'-'})); }
         else{
-          var tmp=[];
+          let tmp=[];
           for(elem of raw2arry(_res.dumpdata,{clean:true,filter:'-'})){ if(String(elem[0]).length>=5 && elem[0].indexOf('/')!==-1 && elem[3]!==undefined && elem[5]!==undefined){tmp.push({ [outputFormat.key[0]]:elem[outputFormat.indxv[0]],[outputFormat.key[1]]:elem[outputFormat.indxv[1]],[outputFormat.key[2]]:elem[outputFormat.indxv[2]],[outputFormat.key[3]]:elem[outputFormat.indxv[3]],[outputFormat.key[4]]:elem[outputFormat.indxv[4]],[outputFormat.key[5]]:elem[outputFormat.indxv[5]],[outputFormat.key[6]]:elem[outputFormat.indxv[6]] });} }
           res(tmp);
         }
@@ -616,13 +699,13 @@ class HpSWdev extends Devnetclass{
       if (option.fileref.getversion){ this.localtemplate = option.fileref }
       else{ this.localtemplate = {getversion:option.fileref} }
     }
-    if (this.hpswtemplate.JSONdispBridgeBr){ var outputFormat = this.hpswtemplate.JSONdispBridgeBr || {key:['link','speed','duplex','type','pvid','desc'],indxv:[0,1,2,3,4,5]} }
+    if (this.hpswtemplate.JSONdispBridgeBr){ var outputFormat = this.hpswtemplate.JSONdispBridgeBr || {key:['int','link','speed','duplex','type','pvid','desc'],indxv:[0,1,2,3,4,5,6]} }
     return new Promise(res=>{
       fngetdata(_datav,option).then(_res=>{
         if(option.json==false){ res(raw2arry(_res.dumpdata,{clean:true,filter:'-'})); }
         else{
-          var tmp=[];
-          for(elem of raw2arry(_res.dumpdata,{clean:true,filter:'-'})){ if(String(elem[0]).length>=5 && elem[0].indexOf('AGG')!==-1 && elem[3]!==undefined && elem[5]!==undefined){ tmp.push({ [outputFormat.key[0]]:elem[outputFormat.indxv[0]],[outputFormat.key[1]]:elem[outputFormat.indxv[1]],[outputFormat.key[2]]:elem[outputFormat.indxv[2]],[outputFormat.key[3]]:elem[outputFormat.indxv[3]],[outputFormat.key[4]]:elem[outputFormat.indxv[4]],[outputFormat.key[5]]:elem[outputFormat.indxv[5]] }); } }
+          let tmp=[];
+          for(elem of raw2arry(_res.dumpdata,{clean:true,filter:'-'})){ if(String(elem[0]).length>=5 && elem[0].indexOf('AGG')!==-1 && elem[3]!==undefined && elem[5]!==undefined){ tmp.push({ [outputFormat.key[0]]:elem[outputFormat.indxv[0]],[outputFormat.key[1]]:elem[outputFormat.indxv[1]],[outputFormat.key[2]]:elem[outputFormat.indxv[2]],[outputFormat.key[3]]:elem[outputFormat.indxv[3]],[outputFormat.key[4]]:elem[outputFormat.indxv[4]],[outputFormat.key[5]]:elem[outputFormat.indxv[5]],[outputFormat.key[6]]:elem[outputFormat.indxv[6]] }); } }
           res(tmp);
         }
       });
@@ -692,6 +775,25 @@ class ArubaIAPdev extends Devnetclass{
     }
     this.arubaIAPtemplate = require('./src/arubaIAPtemplate');
   }
+  listif(option){
+    var _datav = {
+      input:"show ip int br\n",
+      output:' '
+    }
+    _datav.classobj = this;
+    if(typeof option.format=='undefined'){ option.format = "xxxx-xxxx-xxxx"}
+    if(option.include){ if(option.include.length >= 2){_datav.input = _datav.input.replace(/(\n)/g, "") + ' | inc ' +option.include + '\n'} }
+    return new Promise(res=>{
+      fngetdata(_datav,{isidle:'\n\n\n',isidle2 : "\n\n\n",dump:true,multiemit:true}).then(_res=>{
+        if(option.json){
+          var tmp=[];
+          let kk = raw2arry(_res.dumpdata);
+          for(elem of raw2arry(_res.dumpdata)){ if(String(elem[1]).length>=7 && String(elem[1]).indexOf('.')!==-1 && String(elem[3]).indexOf('.')!==-1){tmp.push({ int:elem[0],ip:elem[1],mask:elem[3],admin:elem[4],proto:elem[5] });} }
+          res(tmp);
+        }else{ res(raw2arry(_res.dumpdata)); }
+      });
+    });
+  }
   parseMAC(option){
     var _datav = {
       input:"show arp\n",
@@ -705,10 +807,8 @@ class ArubaIAPdev extends Devnetclass{
         if(option.json){
           var tmp=[];
           for(elem of raw2arry(_res.dumpdata)){if(String(elem[3]).length>=12){tmp.push({ mac:formatMAC(elem[3],option.format),ip:elem[0],int:elem[5],flags:elem[2] });} }
-          res({arp:tmp});
-        }else{
-          res(_res.dumpdata);
-        }
+          res(tmp);
+        }else{ res(raw2arry(_res.dumpdata)); }
       });
     });
   }
@@ -1073,18 +1173,27 @@ function formatMAC(val,format){
 }
 function quickipcheck(objstr){
   if ({}.toString.call(objstr)!=='[object String]'){return null}
-  var arrytmp = [];
+  let arrytmp = [];
   for (elem of raw2arry(objstr)){
-    var ctr = 0;
-    var iplist = [];
-    for (elem2 of elem){
-      var tval = String(elem2).match(/(.|..|...)\.(.|..|...)\.(.|..|...)\.(...|..|.)/g);
-      if(elem2==tval){
-        ctr++;
-        iplist.push(elem2);
-      }else if(tval!==null){
-        ctr++;
-        iplist.push(String(tval));
+    let ctr = 0;
+    let iplist = [];
+    let etype = {}.toString.call(elem);
+    if(etype=='[object String]'){
+      if(elem.length<7){continue;}
+      else{
+        let tval0 = String(elem).match(/(.|..|...)\.(.|..|...)\.(.|..|...)\.(...|..|.)/g);
+        if(tval0!==null){arrytmp.push({a:elem,b:tval0,c:1});}
+      }
+    }else if(etype=='[object Array]'){
+      for (elem2 of elem){
+        let tval = String(elem2).match(/(.|..|...)\.(.|..|...)\.(.|..|...)\.(...|..|.)/g);
+        if(elem2==tval){
+          ctr++;
+          iplist.push(elem2);
+        }else if(tval!==null){
+          ctr++;
+          iplist.push(String(tval));
+        }
       }
     }
     if(ctr>0){arrytmp.push({a:elem,b:iplist,c:ctr});}
@@ -1167,4 +1276,36 @@ function jsonmerge(j1,j2){
     else { return tmp; }
   }else { return j1; }
 }
-module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge}};
+function getroute(obj){
+  if({}.toString.call(obj)==='[object String]'){
+    if(obj.indexOf('\n')!==-1){
+      let tmp2 = [];
+      for(indobj of spltdt(obj)){ tmp2.push(getroute(indobj)); }
+      return tmp2;
+    }else{
+      let arry = quickipcheck(obj);
+      let tmp = {dst:arry[0].b}
+      if(arry[1]){
+        if(String(arry[1].b).indexOf('255')!==-1 || String(arry[1].b).indexOf('0.0.0.0')!==-1){ tmp.mask = arry[1].b }
+        else if(arry.length==2 && obj.indexOf('via')!==-1){ tmp.gw = arry[1].b; }
+      }
+      if(arry[2]){
+        let rate = 0;
+        for(let strtmp of arry[2].a){
+          let _strtmp = String(strtmp).toUpperCase();
+          if(_strtmp.indexOf('DEF')!==-1){ rate +=4; }
+          if(_strtmp.indexOf(':')!==-1){ rate +=2; }
+          if(_strtmp.indexOf('IP')!==-1){ rate +=2; }
+          if(_strtmp.indexOf('GW')!==-1){ rate +=4; }
+          if(_strtmp.indexOf('GATEWAY')!==-1){ rate +=7; }
+        }
+        if(rate>5 || arry.length>=3 ){ tmp.gw = arry[2].b; }
+      }
+      if(arry[3]){
+        if(String(arry[3].b).length>7 && String(arry[3].b).indexOf('.')!==-1){ tmp.src = arry[3].b; }
+      }
+      return tmp;
+    }
+  }
+}
+module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge,getroute}};

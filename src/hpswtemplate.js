@@ -19,7 +19,7 @@ const getversion=[
 const getinterface=[
 ];
 const JSONparsePOE = {key:['int','poe','priority','curpower','op','class','status'],indxv:[0,1,2,3,4,5,6]};
-const JSONdispBridgeBr = {key:['link','speed','duplex','type','pvid','desc'],indxv:[0,1,2,3,4,5]};
+const JSONdispBridgeBr = {key:['int','link','speed','duplex','type','pvid','desc'],indxv:[0,1,2,3,4,5,6]}
 const JSONlldpneighbor = [
   ['LLDP','neighbor','port'],
   ['LLDP','neighbor','index'],
