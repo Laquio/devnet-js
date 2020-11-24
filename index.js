@@ -1,8 +1,8 @@
 //Code for free, use at you own risk!
 //by: louie.laquio@gmail.com
 //created: July 2019
-//lastmod: August 2019
-//version: 1.0
+//lastmod: Nov 2020
+//version: 2.0
 const SSH2C = require('ssh2').Client;
 class Devnetclass {
   constructor(data){
@@ -21,125 +21,125 @@ class Devnetclass {
     this.t2 = data.t2 || 5;
     this.bsBuff = data.bsBuff || Buffer.from([8]);
   }
-  getCommOpt(commx){
-      if(this.sshconn.active){
-        let varstream =this.sshconn.stream;
-        let comm = commx.replace(/(\n)/g,'');
-        return new Promise(retval=>{
-          new Promise(res=>{
-            if(varstream){
-              varstream.write('\n');
-              setTimeout(()=>{ res(true) },25);
-            }else{ res(false); }
-          }).then((val2)=>{
-            let lflg = true;
-            if(!val2){ retval(false); }
-            else{
-              let strtmp = "";
-              let cflg = false;
-              let endflg = false;
-              varstream.on('data',(ds)=>{
-                if(endflg==false){
-                  strtmp = strtmp + String(ds);
-                  if(cflg){
-                    if(strtmp.indexOf(comm)!==-1 && strtmp.indexOf('<cr>')!==-1 ){
-                      endflg = true;
-                      varstream = null;
-                      retval(strtmp);
-                    }
-                  }else if(strtmp.indexOf(comm)!==-1){
-                    lflg = false;
-                    strtmp = "";
-                  }else{ lflg = false; }
-                }
-              });
-              if(commx){
-                setTimeout(()=>{
-                  lflg = true;
-                  varstream.write(comm);
-                  setTimeout(()=>{ lflg = false},4000);
-                  let sIntloop = setInterval(()=>{
-                    if(!lflg){
-                      clearInterval(sIntloop);
-                      if(!cflg){
-                        strtmp = "";
-                        varstream.write('?');
-                        setTimeout(()=>{
-                          if(endflg==false){
-                            endflg = true;
-                            varstream = null;
-                            retval(strtmp);
-                          }
-                        },2500);
-                      }
-                      cflg = true;
-                    }
-                  },200);
-                },100);
-              }else{
-                varstream.write('?');
-                setTimeout(()=>{
-                  retval(strtmp);
-                },450);
+  getCommOpt(commx,option){
+    if(typeof option=='undefined'){ option = {} }
+    if(option.token === undefined || option.token === ''){ option.token = '?' }
+    if(this.sshconn.active){
+      let varstream =this.sshconn.stream;
+      let comm = commx.replace(/(\n)/g,'');
+      return new Promise(retval=>{
+        new Promise(res=>{
+          if(varstream){
+            varstream.write('\n');
+            setTimeout(()=>{ res(true) },25);
+          }else{ res(false); }
+        }).then((val2)=>{
+          let lflg = true;
+          if(!val2){ retval(false); }
+          else{
+            let strtmp = "";
+            let cflg = false;
+            let endflg = false;
+            function _vstrmfn(ds){
+              if(endflg==false){
+                strtmp = strtmp + String(ds);
+                if(cflg){
+                  if(strtmp.indexOf(comm)!==-1 && (strtmp.indexOf('<cr>')!==-1 || strtmp.indexOf(']')!==-1 || strtmp.indexOf('\r\n\r\n')!==-1) ){ 
+                    cflg = false;
+                    endflg = true;
+                    retval(strtmp);
+                  }
+                }else if(strtmp.indexOf(comm)!==-1){
+                  lflg = false;
+                  strtmp = "";
+                }else{ lflg = false; }
+              }else if(varstream !==null){
+                  varstream.removeListener('data',_vstrmfn);
+                  varstream = null;
               }
             }
-          });
-        });
-      }
-    }
-    isIdle(charcheck){
-      if(this.sshconn.active){
-        charcheck = charcheck ||'\n\n';
-        return new Promise(res=>{
-          let hoststrtmp="";
-          let ctr = 1;
-          let tmp = "";
-          let flg=true;
-          let dstmp = "";
-          let vthis = this;
-          vthis.streamSendkeys(charcheck,{autoenter:false,emit:true}).on('data',(ds)=>{
-            if(flg){
-              dstmp = String(ds).trim();
-              if(dstmp.length>4 && dstmp.length<100){
-                if(hoststrtmp==dstmp){
-                  flg = false;
-                  if(String(charcheck).length>2){
-                    if(ctr==String(charcheck).length||(ctr+1)==String(charcheck).length){ res(hoststrtmp); }
-                  }else{ res(hoststrtmp); }
-                }else{ hoststrtmp = dstmp; }
-                ctr++;
-                if(ctr>String(charcheck).length+1){
-                  flg = false;
-                  res(false);
-                }else if(dstmp.length>=35 && dstmp.indexOf('\n')!==-1){
-                  flg = false;
-                  let tmp0 = dstmp.split("\n");
-                  let retv = tmp0[0].trim();
-                  if(charcheck.length>2 && retv == tmp0[1].trim()){ res(retv); }
-                  else{res(false);}
-                }
-              }else if(charcheck.charCodeAt(0)==32){
-                flg = false;
-                tmp+=dstmp;
-                if(charcheck.length==tmp.length){
-                  if(charcheck==tmp){res(true);}
-                  else{res(false);}
-                }
-              }else if(dstmp.length>120){ vthis.streamSendkeys('\n\n\n',{autoenter:false,emit:false}); }
+            varstream.on('data',_vstrmfn);
+            if(commx){
+              setTimeout(()=>{
+                lflg = true;
+                varstream.write(comm);
+                setTimeout(()=>{ lflg = false},5000);
+                let sIntloop = setInterval(()=>{
+                  if(endflg){ clearInterval(sIntloop);}
+                  else if(!lflg){
+                    clearInterval(sIntloop);
+                    if(!cflg){
+                      strtmp = "";
+                      varstream.write(option.token);
+                    }
+                    cflg = true;
+                  }
+                },100);
+              },100);
+            }else{
+              varstream.write(option.token);
+              setTimeout(()=>{ retval(strtmp); },450);
             }
-          });//-vthis.streamSendkeys
+          }
         });
-      }else{ return new Promise(res=>{res(false)});}
+      });
     }
+  }
+  isIdle(charcheck){
+    if(this.sshconn.active){
+      charcheck = charcheck ||'\n\n';
+      return new Promise(res=>{
+        let hoststrtmp="";
+        let ctr = 1;
+        let tmp = "";
+        let flg=true;
+        let dstmp = "";
+        let vthis = this;
+        let tmpstream = vthis.streamSendkeys(charcheck,{autoenter:false,emit:true});
+        function tmpstreamfn(ds){
+          if(flg){
+            dstmp = String(ds).trim();
+            if(dstmp.length>4 && dstmp.length<100){
+              if(hoststrtmp==dstmp){
+                flg = false;
+                if(String(charcheck).length>2){
+                  if(ctr==String(charcheck).length||(ctr+1)==String(charcheck).length){ res(hoststrtmp); }
+                }else{ res(hoststrtmp); }
+              }else{ hoststrtmp = dstmp; }
+              ctr++;
+              if(ctr>String(charcheck).length+1){
+                flg = false;
+                res(false);
+              }else if(dstmp.length>=35 && dstmp.indexOf('\n')!==-1){
+                flg = false;
+                let tmp0 = dstmp.split("\n");
+                let retv = tmp0[0].trim();
+                if(charcheck.length>2 && retv == tmp0[1].trim()){ res(retv); }
+                else{res(false);}
+              }
+            }else if(charcheck.charCodeAt(0)==32){
+              flg = false;
+              tmp+=dstmp;
+              if(charcheck.length==tmp.length){
+                if(charcheck==tmp){res(true);}
+                else{res(false);}
+              }
+            }else if(dstmp.length>120){ vthis.streamSendkeys('\n\n\n',{autoenter:false,emit:false}); }
+          }else{ tmpstream.removeListener('data',tmpstreamfn); }
+        };//-vthis.streamSendkeys
+        tmpstream.on('data',tmpstreamfn);
+      });
+    }else{ return new Promise(res=>{res(false)});}
+  }
     streamcli(options,cb){
       if(this.sshconn.active!==true || !this.sshconn.stream){ return false;}
-      const bsconst = this.bsBuff;
       const psobj = process.stdin;
       let varthis = this;
       let tmpinput  = '';
       let bufftmp;
       let sctr=0;
       let cbflg = {}.toString.call(cb) === '[object Function]';
+      let hideFlg = false;
       options = options || {psobj:{}};
       if (!options.psobj){options.psobj = {}};
       options.psobj.resume = options.psobj.resume || true;
@@ -153,9 +153,14 @@ class Devnetclass {
       }
       options.psobj.stoptoken = options.psobj.stoptoken || Buffer.from([27]);
       options.psobj.stopctr = options.psobj.stopctr || 2;
+      let tmpStreamLoc = varthis.sshconn.stream;
+      function tmpStdWrFn(data) { 
+        if(hideFlg){ tmpStreamLoc.removeListener('data',tmpStdWrFns); }
+        else{process.stdout.write(data);}}
       if(options.hide!==true){
-        varthis.sshconn.stream.on('data', function(data) { process.stdout.write(data); });
-        varthis.sshconn.stream.on('close', function(data) {
+        hideFlg = true;
+        tmpStreamLoc.on('data', tmpStdWrFn);
+        tmpStreamLoc.on('close', function(data) {
           process.stdout.write("\n")
           process.exit();
         });
@@ -253,39 +258,46 @@ class Devnetclass {
       let t1 = this.t1;
       let t2 = this.t2;
       let vtest = {}.toString.call(datacb) === '[object Function]';
-      this.openSshShell(sessparam,function(resconn){
-          resconn.exec(params.command,{pty: true}, function(err, stream) { //.exec(params.command, {pty: true} ,function(err, stream)
-            if (err) {
-              objerr.push(err);
-              throw err;
-            }
-            if(sessparam.setEncoding){stream.setEncoding(sessparam.setEncoding);}
-            stream.on('close', function(code, signal) {
-              setTimeout(function(){
-                resconn.end();
-                if({}.toString.call(sshcb) === '[object Function]'){sshcb(tmpdata);}
-              },t1);
-            });
-            stream.on('data', function(data) {
-              tmpdata.push(data);
-              if (vtest){
-                setTimeout(function(){datacb(data);},t2);
-              }
-            }).stderr.on('data', function(data) {
-              objerr.push(data);
-              throw 'Error';
-            });
-          });//-resconn.exec
-    });//-this.openSshShell
+      let errx = '';
+      new Promise(resv1=>{
+        this.openSshShell(sessparam,function(resconn){
+          try {
+            if (this.sshconn.active==false){throw resconn}
+            resconn.exec(params.command,{pty: true}, function(err, stream) { //.exec(params.command, {pty: true} ,function(err, stream)
+              if (err) { throw err; }
+              if(sessparam.setEncoding){stream.setEncoding(sessparam.setEncoding);}
+              stream.on('close', function(code, signal) {
+                setTimeout(function(){
+                  resconn.end();
+                  resv1(true);
+                },t1);
+              });
+              stream.on('data', function(data) {
+                tmpdata.push(data);
+                if (vtest){ setTimeout(function(){datacb(data);},t2); }
+              }).stderr.on('data', function(data) {
+                objerr.push(data);
+                throw 'Stream Error';
+              });
+            });//-resconn.exec
+          } catch (error) {
+            objerr.push(error);
+            resv1(false);
+          }
+        });//-this.openSshShell  
+      }).then(resv2=>{
+        if({}.toString.call(sshcb) === '[object Function]' && resv2){sshcb(tmpdata);}
+        else{ sshcb (["Session encountered error"]); }
+      });
     }//-execute
     openSshShell(sesParams,sshcb){
-    if (this.sshconn.active){
-      this.error.push("This Device (" + this.sshconn.credential.host + ") has an active session!");
-      return this.error[0];
-    }else{
-      var objerr = this.error;
-      var objconn = this.sshconn;
-      (new Promise((res)=>{ checkCred(sesParams.credential,function(cb){ res(cb); }); })).then((_res) => {
+      if (this.sshconn.active){
+        this.error.push("This Device (" + this.sshconn.credential.host + ") has an active session!");
+        return this.error[0];
+      }else{
+        let objerr = this.error;
+        let objconn = this.sshconn;
+        (new Promise((res)=>{ checkCred(sesParams.credential,function(cb){ res(cb); }); })).then((_res) => {
           return new Promise((res)=>{
             if (!_res){ res(false); } else {
               try {
@@ -295,34 +307,44 @@ class Devnetclass {
                     res(true);
                   }else{
                     objconn.shell(function(err, stream) {
-                      if (err) throw err;
-                      objconn.stream = stream;
-                      res(true);
+                      if (err) {
+                        objerr.push(err);
+                        res(err);
+                      }else{
+                        objconn.stream = stream;
+                        res(true);
+                      }
                     });
                   }
+                }).on('error',function(err) {
+                  objerr.push(err);               
+                  res(err);
                 }).connect(sesParams.credential);
               } catch (e) {
                 objerr.push(e);
-                res(false);
+                res(e);
               }
             }
           });
-      }).then((result) => {
-        const sshcbflg = {}.toString.call(sshcb) === '[object Function]';
-        this.error = objerr;
-        if (result) {
-          this.sshconn = objconn;
-          this.sshconn.credential = sesParams.credential;
-          this.sshconn.active = true;
-          if(sesParams.shell==false && sshcbflg ){sshcb(objconn);}
-          else if (sshcbflg){ sshcb(objconn.stream); }
-        }else {
-          this.sshconn.active = false;
-          if(sshcbflg){ sshcb(false); }
-        }
-      });
-    }
-  }//-openSshShell
+        }).then((result) => {
+          let sshcbflg = {}.toString.call(sshcb) === '[object Function]';
+          this.error = objerr;
+          if (result===true) { 
+            this.sshconn = objconn;
+            this.sshconn.credential = sesParams.credential;
+            this.sshconn.active = true;
+            if(sesParams.shell==false && sshcbflg ){sshcb(objconn);}
+            else if (sshcbflg){ sshcb(objconn.stream); }
+          }else {
+            this.sshconn.active = false;
+            if(sshcbflg){ 
+              sshcb(undefined,result); }
+          }
+        }).catch(e=>{
+          sshcb(undefined,e);
+        });
+      }
+    }//-openSshShell
 }//-Devnetclass
 class Defaultclass extends Devnetclass{
   constructor(_model){
@@ -332,6 +354,7 @@ class Defaultclass extends Devnetclass{
     }
   }
 }
+
 //Cisco Router Device Class Template Definition
 class CiscoRouterdev extends Devnetclass{ //under construction.
   constructor(_model){
@@ -393,6 +416,70 @@ class CiscoRouterdev extends Devnetclass{ //under construction.
     else if({}.toString.call( option.fileref)==='[object Object]'){this.localtemplate = option.fileref}
     else{ this.localtemplate = require(option.fileref); }
     return fnver(_datav,option,this.localtemplate.getversion);
+  }
+  getFirmware(option){
+    var _datav = {
+      input:["show bootvar\n",'show runn | s boot\n'],
+      output:[' ',' ']
+    }
+    _datav.classobj = this;
+    if(typeof option=='undefined'){
+      option = {
+        hide:false,
+        nextmarkerflg:true
+      }
+    }
+     return fnver(_datav,option,[['boot','variable'],'BOOTLDR','CONFIG_FILE','flash','system','register']);
+  }
+  dir(option){
+    var _datav = {
+      input:"dir\n",
+      output:' '
+    }
+    _datav.classobj = this;
+    if(typeof option=='undefined'){
+      option = {
+        hide:false,
+        nextmarkerflg:true
+      }
+    }
+    return fnver(_datav,option,[['lic','_'],'core','universal','rommon','bin','pkg','drwx',(new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric'}).replace(/,/g, '').split(' ')]);
+  }
+  getftp(option){
+    var _datav = {
+      input:"show runn | i ftp\n",
+      output:' '
+    }
+    _datav.classobj = this;
+    if(typeof option=='undefined'){
+      option = {
+        hide:false,
+        nextmarkerflg:true
+      }
+    }
+     return fnver(_datav,option,[['ip','ftp'],'username','password']);
+  }
+  uploadFirmware(srcHost,srcfileName,option){
+    var comm = {
+      input:"copy ftp://"+ srcHost + "/"+srcfileName+" flash:\n",
+      output:'filename',
+      lookforArry:['Destination|filename','?']
+    }
+    var comm2 = {
+      input:srcfileName+"\n",
+      output:' ',
+      lookforArry:['[OK -','bytes','copied']
+    }
+    return new Promise( async res1=>{
+      let temp = await seqCmds(this,[comm,comm2],option);
+      if(temp.status == false && temp.error == false){
+        confirmSeq(this,temp.arry,'[OK -').then(res2=>{
+          temp.status = true;
+          temp.last = [res2,'[confirm]'];
+          res1(temp);
+        });
+      }else{ res1(temp); }
+    });
   }
 }//-CiscoRouterdev class
 //Cisco Switch Device Class Template Definition
@@ -718,14 +805,16 @@ class HpSWdev extends Devnetclass{
     }
     _datav.classobj = this;
     await _datav.classobj.getCommOpt(_datav.input).then((val)=>{
+      /*
       for(let chre in _datav.input){
         _datav.classobj.sshconn.stream.write(Buffer.from([8]));
       }
+      */
       if(val.indexOf('verbose')!==-1){
         _datav.input = 'display lldp neighbor-information verbose\n'
       }
     });
-    await new Promise(fnres=>{
+    await new Promise(fnres=>{    //check device is Idle
       let wintfn = setInterval(()=>{
         _datav.classobj.isIdle('\n').then((rv)=>{
           if(rv && rv.length>7){
@@ -733,7 +822,7 @@ class HpSWdev extends Devnetclass{
             fnres();
           }
         });
-      },250);
+      },500);
     });
     if(typeof option=='undefined'){ option = {}}
     option.isidle = option.isidle || "\n\n\n";
@@ -746,6 +835,7 @@ class HpSWdev extends Devnetclass{
     option.startinglines = option.startinglines || ['information of '];
     option.endinglines = option.endinglines || ['information of '];
     if(option.include){ if(option.include.length >= 2){_datav.input = _datav.input.replace(/(\n)/g, "") + ' | inc ' +option.include + '\n'} }
+    
     if (typeof option.fileref === "undefined"){ this.localtemplate = this.hpswtemplate }
     else if({}.toString.call( option.fileref)==='[object String]'){ this.localtemplate = require(option.fileref); }
     else{
@@ -753,7 +843,8 @@ class HpSWdev extends Devnetclass{
       else{ this.localtemplate = {JSONlldpneighbor:option.fileref} }
     }
     if(typeof option.refarry == 'undefined' && option.json){ option.refarry = this.hpswtemplate.JSONlldpneighbor }
-    if (this.hpswtemplate.JSONdispBridgeBr){ var outputFormat = this.hpswtemplate.JSONdispBridgeBr || {key:['link','speed','duplex','type','pvid','desc'],indxv:[0,1,2,3,4,5]} }
+    //if (this.hpswtemplate.JSONdispBridgeBr){ var outputFormat = this.hpswtemplate.JSONdispBridgeBr || {key:['link','speed','duplex','type','pvid','desc'],indxv:[0,1,2,3,4,5]} }
+    
     return new Promise(res=>{
       fngetdata(_datav,option).then(_res=>{
         let rtmp = readtext(_res.dumpdata,option);
@@ -765,6 +856,59 @@ class HpSWdev extends Devnetclass{
       });
     });
   }//-lldpneighbor
+  async dhcpSnooping(option){
+    let _datav = {
+      input:'display dhcp',
+      output:' '
+    }
+    _datav.classobj = this;
+    await _datav.classobj.getCommOpt(_datav.input).then((val)=>{
+      if(val.indexOf('dhcp-snooping')!==-1){ _datav.input = 'display dhcp-snooping\n' }
+    })
+    await new Promise(fnres=>{    //check device is Idle
+      let wintfn = setInterval(()=>{
+        _datav.classobj.isIdle('\n').then((rv)=>{
+          if(rv && rv.length>7){
+            clearInterval(wintfn);
+            fnres();
+          }
+        });
+      },500);
+    });
+    
+    if(typeof option=='undefined'){ option = {}}
+    option.isidle = option.isidle || "\n\n\n";
+    option.isidle2 = option.isidle2 || "\n\n\n";
+    option.nextmarker = option.nextmarker || '--- More ---';
+    option.nextmarkerflg = true;
+    option.dump = true;
+    option.getrawflag = true;
+    option.stoptokens = option.stoptokens || false;
+    option.startinglines = option.startinglines || ['display dhcp'];
+    option.endinglines = option.endinglines || [''];
+    if(option.include){ if(option.include.length >= 2){_datav.input = _datav.input.replace(/(\n)/g, "") + ' | inc ' +option.include + '\n'} }
+    
+    if (typeof option.fileref === "undefined"){ this.localtemplate = this.hpswtemplate }
+    else if({}.toString.call( option.fileref)==='[object String]'){ this.localtemplate = require(option.fileref); }
+    else{
+      if (option.fileref.JSONlldpneighbor){ this.localtemplate = option.fileref }
+      else{ this.localtemplate = {JSONlldpneighbor:option.fileref} }
+    }
+    if(typeof option.refarry == 'undefined' && option.json){ option.refarry = this.hpswtemplate.JSONdhcpSnooping }
+    return new Promise(res=>{
+      fngetdata(_datav,option).then(_res=>{
+        let rtmp = readtext(_res.dumpdata,option);
+        if(option.json){
+          let rval = [];
+          for(let entry of rtmp){
+            if(entry.length>0){ rval.push(jsonmerge(entry)); }
+          }
+          res(rval);
+        }else{ res(rtmp);}
+      });
+    });
+    
+  }//-dhcpSnooping
 }
 //Aruba Device Class Template Definition
 class ArubaIAPdev extends Devnetclass{
@@ -890,8 +1034,8 @@ function fnver(_datav,option,val){
 async function fngetdata2(datastr,option,morecb){
     var inptlen =  datastr.input.length;
     var objtmp = {};
-    if(!{}.toString.call(datastr.output)=== '[object Array]'){ res('Output variable must be an array of values.')}
-    else if(inptlen   !== datastr.output.length){ res('Input and output variables must be in the same length.') }
+    if(!{}.toString.call(datastr.output)=== '[object Array]'){ return console.log('Error! Output variable must be an array of values. \n',datastr.output)}
+    else if(inptlen!== datastr.output.length){ return console.log('Error! Input and output variables must be in the same length. \n',datastr.output) }
     else {
       var tempvar = [];
       for(i =0;i<inptlen;i++){
@@ -902,7 +1046,7 @@ async function fngetdata2(datastr,option,morecb){
             output:otmp,
             classobj:datastr.classobj
           }
-          fngetdata(objtmp,option).then(result=>{
+          fngetdata(objtmp,option,morecb).then(result=>{
             tempvar.push(result);
             next();
           });
@@ -910,6 +1054,121 @@ async function fngetdata2(datastr,option,morecb){
       }
       return tempvar;
     }
+}
+const confirmSeq = (classObjtmp,arryIn,strOut,preSearchOpt)=>{
+  let textSearchVal = preSearchOpt || ['want','write?','[confirm]'];
+  if(typeof classObjtmp == 'undefined' || typeof arryIn == 'undefined' || typeof strOut == 'undefined'){ return console.log('Error','\ntypeof classObjtmp == undefined || typeof arryIn == undefined || typeof strOut == undefined'); }
+  return new Promise(res1 =>{
+    let matchflg = false;
+    if(typeof arryIn == 'boolean'){matchflg = true }
+    else{
+      for (let j = arryIn.length; j>=0;j--){
+        if(textSearchX(String(arryIn[j]),textSearchVal)){
+          matchflg =true
+          break;
+        }
+      }
+    }
+    if (matchflg){
+      var dtmp = ' ';
+      var timerflg = false;
+      var setTHndlr = undefined;
+      var cSeqFN = (ds1)=>{
+        dtmp+=String(ds1);
+        if (dtmp.indexOf(strOut)!==-1){
+          if(timerflg){clearTimeout(setTHndlr);} 
+          clssObjS.removeListener('data',cSeqFN);
+          res1(true)
+        }else{
+          if(timerflg){clearTimeout(setTHndlr);}
+          setTHndlr = setTimeout(()=>{
+            timerflg = false;
+            clssObjS.removeListener('data',cSeqFN);
+            clssObjS = undefined;
+            res1(false);
+          },12000);
+          timerflg = true;
+        }
+      }
+      let clssObjS = classObjtmp.streamSendkeys('\n',{autoenter:false,emit:true});
+      clssObjS.on('data',cSeqFN);
+    }else{res1(console.log(['%Warning','Pre text search condition not matching. from -->',arryIn],textSearchVal));}
+  });
+}
+const seqCmds = async (classObj,arryIO,option)=>{
+  var brkflg = false;
+  let result = [true];
+  let arryResult  = [];
+  let _datav = {classobj: classObj}
+  let errormsg = undefined;
+    for (elemIO of arryIO){
+      if(brkflg){break;}
+      else if(!result[0]){break;}
+      _datav.input = elemIO.input;
+      _datav.output = elemIO.output;
+      if(typeof option=='undefined'){ option = { hide:true } }
+      option.nextmarkerflg=false;
+      if(typeof option.safereturn=='undefined'){option.safereturn=true; }
+      if(typeof option.ignorewarning=='undefined'){option.ignorewarning=false}
+      let datadump = '';
+      await fngetdata(_datav,option,d=>{
+        if(!brkflg){
+          datadump += '\n' + d;
+          if(datadump.indexOf('%Error')!==-1){
+            console.log('Device %Error string found!\nStopping sequence now. ',datadump);
+            brkflg = true;
+            errormsg = ['Error ',datadump];
+            result = [undefined,datadump,'Error'];
+          }else if(datadump.indexOf('%Warning')!==-1){
+            if(option.ignorewarning){
+              result = [true,datadump];
+              arryResult.push(datadump);
+            }else{
+              console.log('Function seqCmds option.ignorewarning == false \n Stopping sequence now. ',datadump);
+              brkflg = true;
+              result = [undefined,datadump,'Warning'];
+              arryResult.push(datadump);
+            }
+          }else{
+            if(textSearchX(datadump,elemIO.lookforArry)[0]){ 
+              arryResult.push(datadump);
+              result = [true,datadump];
+            }
+          }
+        }
+      }).then(res=>{
+        if(textSearchX(res,elemIO.lookforArry)[0]){
+          arryResult.push(res);
+          result = [true,res];
+        }
+        else{
+          brkflg = true;
+          arryResult.push(res);
+          if(! option.safereturn || !result[0]){ result = [false,res]; } 
+        }
+      });
+    }
+    if(result[0]){ return {status:true,last:result,arry:arryResult,error:false}; }
+    else{ 
+      let retobj =  {status:false,last:result,arry:arryResult};
+      if(errormsg){retobj.errormsg=errormsg,retobj.error=true};
+      return retobj;
+    }
+}
+const textSearchX = (strv,lookforArry) =>{
+  let ctrm = 0;
+  if(typeof strv !== 'string'){return([false,ctrm,strv,lookfor]);}
+  for (lookfor of lookforArry){
+    try{
+      if(strv.search( new RegExp(lookfor,'g'))==-1){ return([false,ctrm,strv,lookfor]); }
+      else{ctrm++;}
+    }catch(e){
+      if(strv.indexOf(lookfor)==-1){ return([false,ctrm,strv,lookfor]);}
+      else{ctrm++;}
+    }
+  }
+  if(elemIO.lookforArry.length===ctrm){ return([true,ctrm]); }
+  else{ return([false,ctrm,strv,lookfor]); }
 }
 function fngetdata(datastr,option,morecb){
   return new Promise(res=>{
@@ -922,7 +1181,8 @@ function fngetdata(datastr,option,morecb){
     var dumptmp = [];
     var dumptmp2 = [];
     var morecbflg = {}.toString.call(morecb)==='[object Function]';
-    if ({}.toString.call(datastr.input)=== '[object Array]'){ res(fngetdata2(datastr,option,morecb)); }
+    if ({}.toString.call(datastr.input)=== '[object Array]'){
+      res(fngetdata2(datastr,option,morecb)); }
     else{
       if (typeof option.nextmarker === "undefined"){option.nextmarker = '--More--'}
       if (typeof option.hide === "undefined"){option.hide = true}
@@ -933,15 +1193,17 @@ function fngetdata(datastr,option,morecb){
       if(typeof option.delay === "undefined"){option.delay = 0}
       if(typeof option.dump === "undefined"){option.dump = false}
       if(typeof option.getrawflag === "undefined"){option.getrawflag = option.dump}
+      if(typeof option.safereturn === "undefined"){option.safereturn = false}
       var tmpstr = "";
       var endflg=true;
       var fnflg = true;
       var rawdata = ""
       classobj.sshconn.busy = true;
       classobj.isIdle(option.isidle).then(hostind=>{
-          if(hostind!==false){
+        if(hostind!==false){
           setTimeout(()=>{
-            classobj.streamSendkeys(datastr.input,{autoenter:false,emit:true}).on('data',(ds)=>{
+            let tmpclssObjStream = classobj.streamSendkeys(datastr.input,{autoenter:false,emit:true}); 
+            function fngetdata_def(ds){
               if(fnflg){
                 tmpstr = String(ds).trim();
                 if(tmpstr.length>2 && tmpstr.indexOf('\u001b[16D')==-1){
@@ -997,7 +1259,7 @@ function fngetdata(datastr,option,morecb){
                             }
                           }else{
                             classobj.sshconn.prevlog = {data:dumptmp2,date:Date.now()};
-                            res(dumptmp2);
+                            if(dumptmp2){ res(dumptmp2);}
                           }
                         }else{
                           classobj.sshconn.prevlog = {data:false,date:Date.now()};
@@ -1007,9 +1269,19 @@ function fngetdata(datastr,option,morecb){
                     }
                     if(morecbflg){ morecb(ds); }
                 }else if(option.getrawflag && tmpstr.indexOf('\u001b[16D')==-1 ){rawdata+=String(ds)}
+              }else{
+                tmpclssObjStream.removeListener('data',fngetdata_def);
+                tmpclssObjStream = null;
               }
-            });//-classobj.streamSendkeys
+            }//fngetdata_def
+            tmpclssObjStream.on('data',fngetdata_def);//-classobj.streamSendkeys
           },option.delay);
+        }else if(option.safereturn){
+          if(typeof tmpclssObjStream!== 'undefined'){
+            tmpclssObjStream.removeListener('data',fngetdata_def);
+            tmpclssObjStream = null;
+          }
+          res(hostind);
         }
       });//-classobj.isIdle().then(hostind
     }
@@ -1101,7 +1373,7 @@ function extractstr(refarry,objstr){
       if(suboutput.length>0){ output.push(suboutput); }
     }else{ output.push(elem); }
   }
-  return output;
+  return output; 
 }
 function keyvalfn(key,val){
   var valtype = {}.toString.call(val);
@@ -1220,7 +1492,7 @@ function readtext(text, params){
   if (typeof stoptokens == 'string'){  stoptokens = [stoptokens]};
   if (typeof startinglines == 'string'){  startinglines = [startinglines]};
   if (typeof endinglines == 'string'){  endinglines = [endinglines]};
-  if (typeof params.incending =='undefined'){params.incending = true;}
+  if (typeof params.incEnding =='undefined'){params.incEnding = true;}
   let tmparry1 = [];
   let tmparry2 = [];
   let flg = false;
@@ -1229,10 +1501,11 @@ function readtext(text, params){
     l2a:if(flg){
     l2b:for(let elval of endinglines){
         if(elem.indexOf(elval)!==-1){
-          if(params.refarry){ tmparry1.push(arrym2s(extractstr(tmparry2,params.refarry),params.lvl)) }
-          else{ tmparry1.push(tmparry2);}
+          if(params.refarry){ 
+            tmparry1.push(arrym2s(extractstr(tmparry2,params.refarry),params.lvl)) }
+          else if(tmparry2!=={}){ tmparry1.push(tmparry2);}
           flg = false;
-          if(params.incending){break l2b;}
+          if(params.incEnding){break l2b;}
           else{break l2a;}
         }
       }
@@ -1308,4 +1581,4 @@ function getroute(obj){
     }
   }
 }
-module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge,getroute}};
+module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge,getroute:getroute}};

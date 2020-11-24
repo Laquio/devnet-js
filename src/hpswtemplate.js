@@ -21,8 +21,9 @@ const getinterface=[
 const JSONparsePOE = {key:['int','poe','priority','curpower','op','class','status'],indxv:[0,1,2,3,4,5,6]};
 const JSONdispBridgeBr = {key:['int','link','speed','duplex','type','pvid','desc'],indxv:[0,1,2,3,4,5,6]}
 const JSONlldpneighbor = [
-  ['LLDP','neighbor','port'],
-  ['LLDP','neighbor','index'],
+  ['neighbor','port'],
+  ['neighbor','index'],
+  ['Neighbor','index'],
   'Update time',
   'Chassis type',
   'Chassis ID',
@@ -44,4 +45,7 @@ const JSONlldpneighbor = [
   'power value',
   'Maximum frame size'
 ];
-module.exports = {getversion:getversion,getinterface:getinterface,JSONparsePOE:JSONparsePOE,JSONdispBridgeBr:JSONdispBridgeBr,JSONlldpneighbor:JSONlldpneighbor}
+const JSONdhcpSnooping = [
+  ['DHCP','Snooping']
+];
+module.exports = {getversion:getversion,getinterface:getinterface,JSONparsePOE:JSONparsePOE,JSONdispBridgeBr:JSONdispBridgeBr,JSONlldpneighbor:JSONlldpneighbor,JSONdhcpSnooping:JSONdhcpSnooping}
