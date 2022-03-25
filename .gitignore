@@ -3,3 +3,5 @@ node_modules/*
 .gitignore
 .vscode
 test.js
+test2.js
+package-lock.json

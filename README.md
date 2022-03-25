@@ -532,13 +532,123 @@ result:
 ### jsonmerge function
 ```js
 var devnet = require('devnet-js');
+const devtools = devnet.tools
 let arryobj = [{a:1,b:2},{c:3},{d:4}]
 console.log("result: ",devtools.jsonmerge(arryobj)); //result:  { a: 1, b: 2, c: 3, d: 4 }
 console.log("result: ",devtools.jsonmerge({obj1:'hi'},{obj2:' hello'})); //result:  { obj1: 'hi', obj2: ' hello' }
 ```
-### getroute function
+### getNetmaskDetails function
 ```js
 var devnet = require('devnet-js');
-let arryobj = ""
+const devtools = devnet.tools
+let netmask_sample = '255.255.0.0'
+console.log(devtools.c(netmask_sample));
+/*
+result:
+{ '0': [ '255', '255', '0', '0' ],s
+  raw: '11111111.11111111.00000000.00000000',
+  arry: [ 255, 255, 0, 0 ],                     // array format
+  i: 2,                                         // array index [i] octet
+  nm: '255.255.0.0',                            // netmask
+  h: '1111111111111111',                        // host count in binary
+  u: 65535,                                     // upper host IP count
+  ii: 8,                                        // octet host size
+  nn: 16 }                                      // nn format
+*/
+netmask_sample = '/25'                          // string or integer
+console.log(devtools.getNetmaskDetails(netmask_sample));
+/*
+result:
+{ '0': [ '255', '255', '255', '128' ],
+  raw: '11111111.11111111.11111111.10000000',   
+  arry: [ 255, 255, 255, 128 ],                 // array format
+  i: 3,                                         // array index [i] octet
+  nm: '255.255.255.128',                        // netmask
+  h: '1111111',                                 // host count in binary
+  u: 127,                                       // upper host IP count
+  ii: 7,                                        // octet host size
+  nn: 25 }                                      // nn format
+  */
+  netmask_sample = 13                           // string or integer
+  console.log(devtools.getNetmaskDetails(netmask_sample));
+/*
+result:
+{ '0': [ '255', '248', '0', '0' ],
+  raw: '11111111.11111000.00000000.00000000',
+  arry: [ 255, 248, 0, 0 ],
+  i: 1,
+  nm: '255.248.0.0',
+  h: '1111111111111111111',
+  u: 524287,
+  ii: 3,
+  nn: 13 }
+  */
 
+```
+### getSubnetInfo function
+```js
+const devtools = devnet.tools
+let subnet_sample = '192.168.1.0/24'
+console.log(devtools.getSubnetInfo(subnet_sample));
+/*
+result:
+{ nm: '255.255.255.0',                  //netmask
+  ip: '192.168.1.0',                    //input
+  maxh: 255,                            //maximum host
+  i: 3,                                 // array index [i] octet
+  nn: 24,                               //nn format
+  arry: [ 255, 255, 255, 0 ],           //netmask array format
+  lrange: 0,                            //octet lower IP
+  urange: 255 }                         //octet upper IP
+*/
+subnet_sample = '192.168.1.77/30'
+console.log(devtools.getSubnetInfo(subnet_sample));     //(IP/nn) format    
+/*
+result:
+{ nm: '255.255.255.252',                //netmask
+  ip: '192.168.1.77',                   //input
+  maxh: 3,                              //maximum host
+  i: 3,                                 // array index [i] octet
+  nn: 30,                               //nn format
+  arry: [ 255, 255, 255, 252 ],         //netmask array format
+  lrange: 76,                           //octet lower IP
+  urange: 79 }                          //octet upper IP
+  */
+  subnet_sample = '192.168.1.77/255.255.255.240'        //(IP/netmask) format    
+  console.log(devtools.getSubnetInfo(subnet_sample));   
+  /*
+  result:
+  { nm: '255.255.255.240',
+  ip: '192.168.1.77',
+  maxh: 15,
+  i: 3,
+  nn: 28,
+  arry: [ 255, 255, 255, 240 ],
+  lrange: 64,
+  urange: 79 }
+    */
+  subnet_sample = '192.168.1.77' 
+  console.log(devtools.getSubnetInfo(subnet_sample,'21'));      //(subnet_IP, netmask in nn format)
+  /*
+  { nm: '255.255.248.0',
+  ip: '192.168.1.77',
+  maxh: 2047,
+  i: 2,
+  nn: 21,
+  arry: [ 255, 255, 248, 0 ],
+  lrange: 0,
+  urange: 7 }
+  */
+  subnet_sample = '4.2.2.2' 
+  console.log(devtools.getSubnetInfo(subnet_sample));      //(IP host set to default netmask to /32)
+  /*
+ { nm: '255.255.255.255',
+  ip: '4.2.2.2',
+  maxh: NaN,
+  i: 3,
+  nn: 32,
+  arry: [ 255, 255, 255, 255 ],
+  lrange: NaN,
+  urange: NaN }
+  */
 ```

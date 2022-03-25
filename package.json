@@ -44,6 +44,6 @@
   },
   "homepage": "https://github.com/Laquio/devnet-js#readme",
   "dependencies": {
-    "ssh2": "^0.8.5"
+    "ssh2": "^1.7.0"
   }
 }

@@ -443,7 +443,7 @@ class CiscoRouterdev extends Devnetclass{ //under construction.
         nextmarkerflg:true
       }
     }
-    return fnver(_datav,option,[['lic','_'],'core','universal','rommon','bin','pkg','drwx',(new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric'}).replace(/,/g, '').split(' ')]);
+    return fnver(_datav,option,[['lic','_'],'core','universal','rommon','bin','pkg','drwx','bytes total',(new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric'}).replace(/,/g, '').split(' ')]);
   }
   getftp(option){
     var _datav = {
@@ -479,6 +479,25 @@ class CiscoRouterdev extends Devnetclass{ //under construction.
           res1(temp);
         });
       }else{ res1(temp); }
+    });
+  }
+  getUsers(){
+    var _datav = {
+      input:"show users\n",
+      output:' '
+    }
+    _datav.classobj = this;
+    return new Promise(res=>{
+      fnver(_datav,{json:true},['vty','con','aux']).then(res1=>{
+        let tmp = [];
+        for( let prop in res1 ){
+          let tmp2 = raw2arry(res1[prop]);
+          tmp.push({line:tmp2.slice(0, 3),line_num:tmp2[0].replace('*',''),line_type:tmp2[1],line_index:tmp2[2],user:tmp2[3],host:tmp2[4],idle:tmp2[5],location:tmp2[6]})
+        } 
+        res(tmp);        
+      }).catch(e=>{
+        res({error:true,errormsg:e})
+      });
     });
   }
 }//-CiscoRouterdev class
@@ -1581,4 +1600,106 @@ function getroute(obj){
     }
   }
 }
-module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge,getroute:getroute}};
+function getSubnetInfo(subnet, netmask){
+  let resultv = {};
+  if(subnet.indexOf('/')!==-1){
+      let stmp = subnet.split('/');
+      resultv.nm = stmp[1];
+      resultv.ip = stmp[0];
+      let resNM = getNetmaskDetails(stmp[1]);
+      resultv.maxh = resNM.u
+      resultv.i = resNM.i
+      resultv.nn = resNM.nn
+      resultv.nm = resNM.nm
+      resultv.arry = resNM.arry
+      let octet = Number(stmp[0].split('.')[resNM.i]);
+      let incNum = Math.pow(2,resNM.ii);
+      if(incNum==1){
+          resultv.lrange=NaN;
+          resultv.urange=NaN;
+      }
+      else{
+          resultv.lrange =parseInt(octet/incNum)*incNum;
+          resultv.urange =(parseInt(octet/incNum)*incNum)+incNum-1;
+      }
+  }else if({}.toString.call(netmask)=='[object Undefined]'){ return getSubnetInfo(subnet+'/32'); }
+  else{ return getSubnetInfo(subnet+'/'+netmask); }
+  return resultv;
+}
+function getNetmaskDetails(netmask,opt){
+if(netmask==0||netmask==='/0'){netmask='32'}
+let cNM = quickipcheck(String(netmask))[0];
+if (cNM!== undefined){
+   if(cNM.c === 1){
+      let tmpV = String(cNM.a).match(/((255|254|252|248|240|224|192|128)\.(0)\.(0)\.(0))|((255)\.(255|254|252|248|240|224|192|128)\.(0)\.(0))|((255)\.(255)\.(255|254|252|248|240|224|192|128)\.(0))|((255)\.(255)\.(255)\.(255|254|252|248|240|224|192|128))/g);
+      if(tmpV!== null) {
+          let arryt = tmpV[0].split('.');
+          let ctrnn = 0;
+          for (elem of arryt){ ctrnn = ctrnn +  convDec2Bin(elem)[3]; }
+          if({}.toString.call(opt)=='[object Undefined]'){
+              return getNetmaskDetails (ctrnn);
+          }else{
+              opt[0] = arryt;
+              opt.nn = ctrnn;
+              return opt;
+          }
+      }else{ return null;}
+   }else{return null;}
+}else if(String(netmask).length <=3){
+   let val = 0
+   try { val = Number(String(netmask).match(/((\/[0-2][0-9]|30|31|32)|[0-2][0-9]|[1-9])/g)[0].replace('/','')); } catch (error) { return null;}
+   let val2 = convNNtoOCT(val);
+   return getNetmaskDetails(val2.nm,val2);
+}else{ return null}
+}
+function convNNtoOCT(nn){
+  let restmp = '';
+  let restmp2 = [];
+  let restmp3 = '';
+  let restmp4 = '';
+  let iictr = 0;
+  let indxOCT = 0;
+  if(nn>=24){ indxOCT = 3;
+  }else if(nn>=16){ indxOCT = 2;
+  }else if(nn>=8){ indxOCT = 1; }
+  try {
+      for(i=0;i<32;i++){
+          if(i>0 && i%8==0){ restmp+='.' }
+          if(i<Number(nn)){ restmp +='1'; }
+          else{
+              if(((3-indxOCT)*8)<(32-i)){ iictr++; }
+              restmp4+='1';
+              restmp +='0'; }
+      }
+  } catch (error) { return null; }
+  for (elemtmp of restmp.split('.')){
+      let vv = parseInt(elemtmp, 2);
+      restmp2.push(vv);
+      restmp3+=(vv+'.');
+  }
+  restmp3 = restmp3.substring(0,restmp3.length-1);
+  return {raw:restmp,arry:restmp2,i:indxOCT,nm:restmp3,h:restmp4,u:parseInt(restmp4, 2),ii:iictr};
+}
+function convDec2Bin(x) {
+  let bin = 0;
+  let rem, i = 1;
+  let resArry = [undefined,'',undefined];
+  let inZ = false;
+  let prevRem = 0;
+  let ctrxtmp = 0;
+  while (x != 0) {
+      rem = x % 2;
+      if(rem === 1){ctrxtmp++;}
+      resArry[1] = resArry[1] + rem;
+      if(prevRem==1 && rem==0){ inZ = true;}
+      prevRem = rem;
+      x = parseInt(x / 2);
+      bin = bin + rem * i;
+      i = i * 10;
+  }
+  resArry[0]=bin;
+  resArry[2]=inZ;
+  resArry[3]=ctrxtmp;
+  return resArry;
+}
+module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge,getroute:getroute,getNetmaskDetails:getNetmaskDetails,getSubnetInfo:getSubnetInfo}};
