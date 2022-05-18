@@ -226,6 +226,7 @@ class Devnetclass {
       let varthis = this;
       try { if(varthis.sshconn.active!==true || !varthis.sshconn.stream){ return false;} }
       catch (e) { return false; }
+      
       if(!option){
         option = {};
         if(typeof varthis.sshconn.simplify == undefined){ option.autoenter = true; }
@@ -248,7 +249,7 @@ class Devnetclass {
         this.sshconn.end();
         this.sshconn.active = false;
       }
-      var sessparam = {
+      let sessparam = {
         credential:params.credential,
         shell:false
       }
@@ -258,7 +259,6 @@ class Devnetclass {
       let t1 = this.t1;
       let t2 = this.t2;
       let vtest = {}.toString.call(datacb) === '[object Function]';
-      let errx = '';
       new Promise(resv1=>{
         this.openSshShell(sessparam,function(resconn){
           try {
@@ -297,52 +297,57 @@ class Devnetclass {
       }else{
         let objerr = this.error;
         let objconn = this.sshconn;
-        (new Promise((res)=>{ checkCred(sesParams.credential,function(cb){ res(cb); }); })).then((_res) => {
-          return new Promise((res)=>{
-            if (!_res){ res(false); } else {
-              try {
-                objconn = new SSH2C();
-                objconn.on('ready',function(){
-                  if(sesParams.shell==false){
-                    res(true);
-                  }else{
-                    objconn.shell(function(err, stream) {
-                      if (err) {
-                        objerr.push(err);
-                        res(err);
-                      }else{
-                        objconn.stream = stream;
-                        res(true);
-                      }
-                    });
-                  }
-                }).on('error',function(err) {
-                  objerr.push(err);               
-                  res(err);
-                }).connect(sesParams.credential);
-              } catch (e) {
-                objerr.push(e);
-                res(e);
+        if(sesParams.lean){
+          objconn = new SSH2C();
+          objconn.connect(sesParams.credential);
+          return objconn;
+        }else{
+          (new Promise((res)=>{ checkCred(sesParams.credential,function(cb){ res(cb); }); })).then((_res) => {
+            return new Promise((res)=>{
+              if (!_res){ res(false); } else {
+                try {
+                  objconn = new SSH2C();
+                  objconn.on('ready',function(){
+                    if(sesParams.shell==false){
+                      res(true);
+                    }else{
+                      objconn.shell(function(err, stream) {
+                        if (err) {
+                          objerr.push(err);
+                          res(err);
+                        }else{
+                          objconn.stream = stream;
+                          res(true);
+                        }
+                      });
+                    }
+                  }).on('error',function(err) {
+                    objerr.push(err);               
+                    res(err);
+                  }).connect(sesParams.credential);
+                } catch (e) {
+                  objerr.push(e);
+                  res(e);
+                }
               }
+            });
+          }).then((result) => {
+            let sshcbflg = {}.toString.call(sshcb) === '[object Function]';
+            this.error = objerr;
+            if (result===true) { 
+              this.sshconn = objconn;
+              this.sshconn.credential = sesParams.credential;
+              this.sshconn.active = true;
+              if(sesParams.shell==false && sshcbflg ){sshcb(objconn);}
+              else if (sshcbflg){ sshcb(objconn.stream); }
+            }else {
+              this.sshconn.active = false;
+              if(sshcbflg){ sshcb(undefined,result); }
             }
+          }).catch(e=>{
+            sshcb(undefined,e);
           });
-        }).then((result) => {
-          let sshcbflg = {}.toString.call(sshcb) === '[object Function]';
-          this.error = objerr;
-          if (result===true) { 
-            this.sshconn = objconn;
-            this.sshconn.credential = sesParams.credential;
-            this.sshconn.active = true;
-            if(sesParams.shell==false && sshcbflg ){sshcb(objconn);}
-            else if (sshcbflg){ sshcb(objconn.stream); }
-          }else {
-            this.sshconn.active = false;
-            if(sshcbflg){ 
-              sshcb(undefined,result); }
-          }
-        }).catch(e=>{
-          sshcb(undefined,e);
-        });
+        }
       }
     }//-openSshShell
 }//-Devnetclass
@@ -1013,6 +1018,7 @@ class Mikrotikdev extends Devnetclass{
     }
   }
 }
+
 function checkCred(_cred,cb){
   if ( typeof _cred == 'undefined' || !_cred ){ cb(false); }
   else if(_cred.username){
@@ -1472,8 +1478,10 @@ function quickipcheck(objstr){
     if(etype=='[object String]'){
       if(elem.length<7){continue;}
       else{
-        let tval0 = String(elem).match(/(.|..|...)\.(.|..|...)\.(.|..|...)\.(...|..|.)/g);
-        if(tval0!==null){arrytmp.push({a:elem,b:tval0,c:1});}
+        if ((elem.match(/\./g)||[]).length<5){
+          let tval0 = String(elem).match(/(.|..|...)\.(.|..|...)\.(.|..|...)\.(...|..|.)/g);
+          if(tval0!==null){arrytmp.push({a:elem,b:tval0,c:1});}
+        }
       }
     }else if(etype=='[object Array]'){
       for (elem2 of elem){
@@ -1570,32 +1578,66 @@ function jsonmerge(j1,j2){
 }
 function getroute(obj){
   if({}.toString.call(obj)==='[object String]'){
+    
     if(obj.indexOf('\n')!==-1){
       let tmp2 = [];
-      for(indobj of spltdt(obj)){ tmp2.push(getroute(indobj)); }
+      let tableindx = null;
+      for(indobj of spltdt(obj)){ 
+        let getrv = getroute(indobj);
+        if(tableindx===null){
+          if(String(indobj).toLowerCase().indexOf('destination')!==-1 || String(indobj).toLowerCase().indexOf('gateway')!==-1 || String(indobj).toLowerCase().indexOf('mask')!==-1){
+            let elemarry = spltdt(indobj,' ');
+            tableindx = {};
+            for (let i = 0; i<elemarry.length;i++ ){
+              let valearry = String(elemarry[i]).toLowerCase();xxss
+              if(valearry.indexOf('dest')!==-1){ tableindx.dst = i; }
+              else if(valearry.indexOf('gate')!==-1){ tableindx.gw = i; }
+              else if(valearry.indexOf('mask')!==-1){ tableindx.mask = i; }
+              else if(valearry.indexOf('metric')!==-1){ tableindx.metric = i; }
+              else if(valearry.indexOf('int')!==-1 || valearry.indexOf('iface')!==-1){
+                tableindx.src = i; 
+                try { if(elemarry[i-1]==='Use'){ tableindx.src--; } } catch (error) { }
+              }
+              else if(valearry.indexOf('flag')!==-1){ tableindx.flag = i; }
+              else if(valearry.indexOf('ref')!==-1){ tableindx.ref = i; }
+            }
+            tmp2.push(tableindx);
+          }
+        }
+        if(getrv){ tmp2.push(getrv);}
+      }
       return tmp2;
     }else{
+     
       let arry = quickipcheck(obj);
-      let tmp = {dst:arry[0].b}
-      if(arry[1]){
-        if(String(arry[1].b).indexOf('255')!==-1 || String(arry[1].b).indexOf('0.0.0.0')!==-1){ tmp.mask = arry[1].b }
-        else if(arry.length==2 && obj.indexOf('via')!==-1){ tmp.gw = arry[1].b; }
+      let tmp = null;
+      if(arry.length===3 && String(obj).indexOf('link')!==-1){
+        tmp = {dst:arry[0].a,mask:arry[1].a,src:arry[2].a,gw:'On-link'}
       }
-      if(arry[2]){
-        let rate = 0;
-        for(let strtmp of arry[2].a){
-          let _strtmp = String(strtmp).toUpperCase();
-          if(_strtmp.indexOf('DEF')!==-1){ rate +=4; }
-          if(_strtmp.indexOf(':')!==-1){ rate +=2; }
-          if(_strtmp.indexOf('IP')!==-1){ rate +=2; }
-          if(_strtmp.indexOf('GW')!==-1){ rate +=4; }
-          if(_strtmp.indexOf('GATEWAY')!==-1){ rate +=7; }
+      else if(arry.length!==0){
+        tmp = {dst:arry[0].a}
+        if(arry[1]){
+          if(String(arry[1].b).indexOf('255')!==-1 || String(arry[1].b).indexOf('0.0.0.0')!==-1){ 
+            tmp.mask = arry[1].a }
+          else if(arry[1].length==2 && obj.indexOf('via')!==-1){
+            tmp.gw = arry[1].a; }
         }
-        if(rate>5 || arry.length>=3 ){ tmp.gw = arry[2].b; }
-      }
-      if(arry[3]){
-        if(String(arry[3].b).length>7 && String(arry[3].b).indexOf('.')!==-1){ tmp.src = arry[3].b; }
-      }
+        if(arry[2]){
+          let rate = 0;
+          for(let strtmp of arry[2].a){
+            let _strtmp = String(strtmp).toUpperCase();
+            if(_strtmp.indexOf('DEF')!==-1){ rate +=4; }
+            if(_strtmp.indexOf(':')!==-1){ rate +=2; }
+            if(_strtmp.indexOf('IP')!==-1){ rate +=2; }
+            if(_strtmp.indexOf('GW')!==-1){ rate +=4; }
+            if(_strtmp.indexOf('GATEWAY')!==-1){ rate +=7; }
+          }
+          if(rate>5 || arry.length>=3 ){ tmp.gw = arry[2].a; }
+        }
+        if(arry[3]){
+          if(String(arry[3].b).length>7 && String(arry[3].b).indexOf('.')!==-1){ tmp.src = arry[3].a; }
+        }
+      }      
       return tmp;
     }
   }
@@ -1702,4 +1744,5 @@ function convDec2Bin(x) {
   resArry[3]=ctrxtmp;
   return resArry;
 }
-module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge,getroute:getroute,getNetmaskDetails:getNetmaskDetails,getSubnetInfo:getSubnetInfo}};
+const httpchildClassAPI = require('./src/child-express-sockets-handler');
+module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,APIClass:httpchildClassAPI,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge,getroute:getroute,getNetmaskDetails:getNetmaskDetails,getSubnetInfo:getSubnetInfo}};

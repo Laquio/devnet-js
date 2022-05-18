@@ -4,4 +4,8 @@ node_modules/*
 .vscode
 test.js
 test2.js
+test3.js
+test3*
+test4.js
 package-lock.json
+package.json

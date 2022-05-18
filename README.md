@@ -1,3 +1,8 @@
+---
+title: Devnet-JS APIs
+layout: template
+filename: devnet-js-API.md
+---
 # Description
 
 devnet-js modules written in JavaScript for [node.js](http://nodejs.org/).
@@ -27,6 +32,8 @@ devnet-js is using [ssh2](https://www.npmjs.com/package/ssh2) package to establi
       * [Parse poe](#parse-poe)
       * [Parse MAC-ADDR](#parse-mac-addr)
 * [Devnet Tools](#devnet-tools)
+* Child-Process-and-HTTP-SOCKETS-API [Devnet API](#devnet-api)
+    * Go to [devnet-js API page](devnet-js-API.md)
 
 
 ## Requirements
@@ -402,6 +409,9 @@ devtools.quickipcheck(String) // Check String if there is an IPADDR pattern then
 devtools.arrym2s(Arrays,level) // Iterate over the input multi dimension array then returns a single dimension array. ex. console.log(devtools.arrym2s([[1,2,3],['a',1,2,'h',[{as:'as'},['1k','2k']]]]))
 devtools.jsonmerge(json1 | [json_array],json2) //concat 2 or more json ex. console.log(devnet.tools.jsonmerge({a:"a1",b:"b1",c:"c1",x:1},{a:"a 2",b2:"b 2",c_1:"c 2",d:"d1"})); //console.log(devnet.tools.jsonmerge([{a:"a1",b:"b1",c:"c1",x:1},{a:"a 2",b2:"b 2",c_1:"c 2",d:"d1"},{q:'q123'}]));
 devtools.getroute(string) // returns possible route in JSON format both destination and mask.
+devtools.getSubnetInfo(string) // returns details of network host or ssubnet in JSON format
+devtools.getNetmaskDetails(string,string) // returns details of network netmask in JSON format
+
 ```
 
 ### str2Arry function
@@ -545,7 +555,7 @@ let netmask_sample = '255.255.0.0'
 console.log(devtools.c(netmask_sample));
 /*
 result:
-{ '0': [ '255', '255', '0', '0' ],s
+{ '0': [ '255', '255', '0', '0' ],
   raw: '11111111.11111111.00000000.00000000',
   arry: [ 255, 255, 0, 0 ],                     // array format
   i: 2,                                         // array index [i] octet
@@ -587,6 +597,7 @@ result:
 ```
 ### getSubnetInfo function
 ```js
+var devnet = require('devnet-js');
 const devtools = devnet.tools
 let subnet_sample = '192.168.1.0/24'
 console.log(devtools.getSubnetInfo(subnet_sample));
@@ -628,7 +639,7 @@ result:
   urange: 79 }
     */
   subnet_sample = '192.168.1.77' 
-  console.log(devtools.getSubnetInfo(subnet_sample,'21'));      //(subnet_IP, netmask in nn format)
+  console.log(devtools.getSubnetInfo(subnet_sample,'21'));      //(subnet_IP, netmask in nn CIDR format)
   /*
   { nm: '255.255.248.0',
   ip: '192.168.1.77',
@@ -652,3 +663,5 @@ result:
   urange: NaN }
   */
 ```
+# Devnet-API
+Go to [devnet-js API page](devnet-js-API.md)

@@ -14,7 +14,7 @@ setTimeout(function(){ //Writing stream in a simple way some delay is required n
   ciscodev1.streamSendkeys("show ip int br",{autoenter:true,emit:true}).on('data',function(data) {  //other style
     process.stdout.write(data);
   });
-}, 3000);
+}, 5000);
 /*
 setTimeout(testfn, 2000);
 function testfn(){  //-simple stright forward style
