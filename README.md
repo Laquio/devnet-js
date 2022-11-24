@@ -12,7 +12,6 @@ devnet-js simplifies network device interaction using JavaScript functions and t
 devnet-js is using [ssh2](https://www.npmjs.com/package/ssh2) package to establish SSH connectivity.
 
 # Table of Contents
-
 * [Requirements](#requirements)
 * [Installation](#installation)
 * [SSH Examples](#ssh-examples)
@@ -34,7 +33,7 @@ devnet-js is using [ssh2](https://www.npmjs.com/package/ssh2) package to establi
 * [Devnet Tools](#devnet-tools)
 * Child-Process-and-HTTP-SOCKETS-API [Devnet API](#devnet-api)
     * Go to [devnet-js API page](devnet-js-API.md)
-
+* [Donation](#donate)
 
 ## Requirements
 
@@ -411,7 +410,7 @@ devtools.jsonmerge(json1 | [json_array],json2) //concat 2 or more json ex. conso
 devtools.getroute(string) // returns possible route in JSON format both destination and mask.
 devtools.getSubnetInfo(string) // returns details of network host or ssubnet in JSON format
 devtools.getNetmaskDetails(string,string) // returns details of network netmask in JSON format
-
+devtools.cli2Object(string,[string],[string],boolean) // returns details of network netmask in JSON format
 ```
 
 ### str2Arry function
@@ -663,5 +662,114 @@ result:
   urange: NaN }
   */
 ```
+### CLI to Object function
+```js
+let str = `
+router eigrp 102
+ distribute-list acllist2 out Tunnel1
+ network 10.10.20.0 0.0.0.255
+ network 10.10.21.0 0.0.0.255
+ network 10.10.22.0 0.0.0.255
+osfp 1 router-id 1.1.1.1
+ import-route static cost 10
+ area 0.0.0.0
+  network 10.10.20.0 0.0.0.255
+  network 10.10.21.0 0.0.0.255
+  network 10.10.22.0 0.0.0.255
+ area 0.0.0.1
+  network 10.2.20.0 0.0.0.255
+  network 10.2.21.0 0.0.0.255
+  network 10.2.22.0 0.0.0.255
+
+ntp access-group peer 80
+ntp server 1.1.1.1
+ntp server 1.1.1.2
+ntp server 1.1.1.3 prefer
+#
+`
+const devnet = require('devnet-js');
+let devtools = devnet.tools;
+console.log('---\n',devtools.cli2Object(str));
+//console.log('---\n',devtools.cli2Object(str,'network')); // uncomment see other result
+//console.log('---\n',devtools.cli2Object(str,['network','ntp server']));   // defaut value of whitelistArry is ['description','encapsulation'].
+
+let strv2 = `
+   oodsk advalss
+     asdf dvad
+interface GigabitEthernet0/0/1
+ description Internet Ethernet BW100MB
+ bandwidth 500000
+ ip flow monitor FLOW-MONITOR-1 input
+ ip flow monitor FLOW-MONITOR-1 output
+ ip address 1.1.1.1 255.255.255.252
+ ip nat outside
+ speed 1000
+ no negotiation auto
+!
+interface GigabitEthernet0/0/2
+ ip address 2.2.2.2 255.255.255.248
+ negotiation auto
+ no cdp enable
+!
+line vty 0 4
+ access-class ssh-vty in vrf-also
+ exec-timeout 5 15
+ privilege level 15
+ password 7 testv2
+ transport preferred none
+ transport input ssh
+line vty 5 15
+ access-class ssh-vty in vrf-also
+ exec-timeout 5 15
+ privilege level 15
+ password 7 testv3
+ transport input ssh
+!
+router eigrp 101
+ distribute-list acllist1 out Tunnel0
+ network 10.10.10.0 0.0.0.255
+ network 10.10.20.0 0.0.0.255
+ redistribute ospf 1 metric 1000000 10 255 10 1500 route-map ospf-to-eigrp-rm
+ distance 20 10.10.10.0 0.0.0.0
+ passive-interface default
+ no passive-interface Tunnel0
+!
+ntp access-group peer 80
+ntp server 1.1.1.1
+ntp server 1.1.1.2
+ntp server 1.1.1.3 prefer
+`
+console.log('--\n',devtools.cli2Object(strv2,'network',['access-class','exec-timeout','transport']));
+//console.log('--\n',devtools.cli2Object(strv2,'network',['access-class']));
+//console.log('---\n',toolsd.cli2Object(strv2,['network','ntp server'],['access-class'],true)); // if headOnlyFlg = true,  it will only get the parent/main config.
+```
 # Devnet-API
 Go to [devnet-js API page](devnet-js-API.md)
+<div>
+ <h3>
+ Please donate for a cup of cofee or pizza.. :)
+ </h3>
+ <h3>
+ Thank You!
+ </h3>
+</div>
+
+# Donate
+<div>
+ <h3>
+ Please donate for a cup of cofee or pizza.. :)
+ </h3>
+ <h3>
+ Thank You!
+ </h3>
+</div>
+
+![alt text](https://github.com/Laquio/blob/blob/main/laquio-Donate-QR%20Code.png?raw=true)
+
+<div>
+<form action="https://www.paypal.com/donate" method="post" target="_top">
+<input type="hidden" name="hosted_button_id" value="5FYTLNPPG7TNL" />
+<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+<img alt="" border="0" src="https://www.paypal.com/en_PH/i/scr/pixel.gif" width="1" height="1" />
+</form>
+</div>

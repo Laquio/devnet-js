@@ -18,10 +18,13 @@ The ChildProcAPI can be access with specific set of functions. details soon stil
 * [Child API SSH Examples](#ssh-examples)
   * [Sample SSH via Child](#sample-ssh-via-child)
   * [Sample using Multiple Child Processes](#sample-using-multiple-child-processes)
+  * [Sample using extendCliVar to simply ssh session](#sample-using-extendclivar)
+  * [Sample .end() to terminate child ssh session](#sample-end-function)
   * [Sample using Readable Stream](#sample-using-readable-stream)
   * [Sample using Writable Stream](#sample-using-writable-stream)
 * [REST and Socket API SSH Examples](#NA)
   * [REST API example](#rest-api)
+* [Donation](#donate)
 
 ## Requirements
 
@@ -164,6 +167,86 @@ setTimeout(() => {
 }, 7000);
 ```
 
+### Sample using extendCliVar
+```js
+const devnet = require('devnet-js');
+let sampleApiHandler1 = new devnet.APIClass.ChildProcAPI({id:"any string here",multiple:false}); //using ChildProcAPI Event Emitter Class as example with Multiple child processess
+
+let  loginparam = {
+  credential:{  //see ssh2 documentation for other option
+    host: '',
+    port: 22,
+    username: '',
+    password: '',
+    algorithms: {
+      cipher: [ '3des-cbc',"aes256-ctr","aes192-ctr","aes128-ctr"],
+      kex: [ "diffie-hellman-group1-sha1","diffie-hellman-group14-sha1" ]
+      , hmac :['hmac-sha2-256','hmac-sha2-512']
+    }
+  }
+}
+console.log('sampleApiHandler1.forkArryCtr ',sampleApiHandler1.forkArryCtr)
+console.log('sampleApiHandler1.forkArryCtr.length ',sampleApiHandler1.forkArry.length)
+console.log('\n----------------------------------------------------------------------\n')
+
+sampleApiHandler1.on('event-log',(valOutput)=>{   //event emitter "event-log" -> from sampleApiHandler1
+  console.log('from sampleApiHandler1 event-log: ',valOutput);
+});
+sampleApiHandler1.login(loginparam,'custom-eventname1'); //login via SSH this will create forkArry[0] '0' as default start, ssh running in a node.exe forked child process
+console.log('\n----------------------------------------------------------------------\n');
+let readyFlg1 =false;
+sampleApiHandler1.on('custom-eventname1',(val)=>{   //event emitter "child-msg" -> capture output event from child process.
+    console.log('\n*** val:\n',val);
+    if(val.status == 'running'){ readyFlg1 = true; }
+});
+let waitChildloop = setInterval(()=>{   //sample loop to check if ssh session is ready
+  if(readyFlg1==true){
+    main();           // call main function right after the ssh session is ready
+    readyFlg1 =false;
+    clearInterval(waitChildloop);  //stopping loop
+  }
+},250);
+
+function main(){
+  let eventnamesample = 'custom-eventname1';
+  // sampleApiHandler1.extendCliVar(0,eventnamesample); //function .extendCliVar will initialize cliVar and will create event listener "event +'-confirm'", this is to simplify the ssh access of the child process.
+  sampleApiHandler1.extendCliVar(0,eventnamesample,7); // comment this line to compare.
+  
+  sampleApiHandler1.on(eventnamesample+'-confirm',(val)=>{  // event +'-confirm' will be created when using the function .extendCliVar 
+    console.log('-confirm ',val);         // this will reflect the last command sent to the child; this event will emit back the input command sent to ssh session that is ~2seconds by default (chunkdly variable) after it is seen at the ssh output.
+  });
+  sampleApiHandler1.writeCmd({cmd:' dir\n'},0) //send dir command to child.
+
+  setTimeout(() => { // send another dir command after 10seconds
+    sampleApiHandler1.writeCmd({cmd:' dir | i log \n'},0)
+  },10000);
+
+  setTimeout(() => { // send another dir command after 20seconds
+    sampleApiHandler1.writeCmd({cmd:' dir | i lic \n'},0)
+  },20000);
+  
+  setTimeout(() => {  //check cliVar[0] after 30seconds
+    console.log('sampleApiHandler1.cliVar[0].lastCmd ',sampleApiHandler1.cliVar[0].lastCmd);
+    console.log('sampleApiHandler1.cliVar[0].lastOutput ',sampleApiHandler1.cliVar[0].lastOutput);
+    console.log('sampleApiHandler1.cliVar[0].cliBufferMax ',sampleApiHandler1.cliVar[0].cliBufferMax);
+    console.log('sampleApiHandler1.cliVar[0].cliBuffer ',sampleApiHandler1.cliVar[0].cliBuffer);
+  },30000);
+
+  setTimeout(() => {// ending session after 40seconds using .end() function
+    sampleApiHandler1.end(); 
+  },40000);
+}
+```
+### Sample end Function
+```js
+  ..
+  const devnet = require('devnet-js');
+  let sampleApiHandler1 = new devnet.APIClass.ChildProcAPI
+  .
+  .
+  sampleApiHandler1.end(); // ending ssh session and child process
+```
+
 ### Sample using Readable Stream
 
 ```js
@@ -293,3 +376,22 @@ function test2(){
 }
 
 ```
+# Donate
+<div>
+ <h3>
+ Please donate for a cup of cofee or pizza.. :)
+ </h3>
+ <h3>
+ Thank You!
+ </h3>
+</div>
+
+![alt text](https://github.com/Laquio/blob/blob/main/laquio-Donate-QR%20Code.png?raw=true)
+
+<div>
+<form action="https://www.paypal.com/donate" method="post" target="_top">
+<input type="hidden" name="hosted_button_id" value="5FYTLNPPG7TNL" />
+<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+<img alt="" border="0" src="https://www.paypal.com/en_PH/i/scr/pixel.gif" width="1" height="1" />
+</form>
+</div>

@@ -1744,5 +1744,186 @@ function convDec2Bin(x) {
   resArry[3]=ctrxtmp;
   return resArry;
 }
+function cli2Object(cliConfigStr,groupFilter,whitelistArry,headOnlyFlg){
+  if({}.toString.call(whitelistArry) === '[object Undefined]'){ whitelistArry = ['description','encapsulation']; }
+  else if({}.toString.call(whitelistArry) === '[object String]'){whitelistArry = [whitelistArry]}
+  else if({}.toString.call(whitelistArry) != '[object Array]'){ throw (['Error',' whitelistArry must be a Array of Strings'])}
+  if({}.toString.call(groupFilter) === '[object Undefined]'){groupFilter = ''}
+  else if({}.toString.call(groupFilter) === '[object String]'){groupFilter = [groupFilter]}
+  else if({}.toString.call(groupFilter) != '[object Array]'){ throw (['Error',' whitelistArry must be a Array of Strings'])}
+  let cliArry = cliConfigStr.split('\n')
+  let grouplist = {};
+  let grpCtr = {};
+  let jsonOut = {};
+  let arryOut = [];
+  let jsonTmp = {};
+  let capFlg = false;
+  let arryCtr = [0,0,0,0,0,0,0,0,0,0]; // up to 10 JSON depth only
+  let headConfig = '';
+  let headArry = [];
+  let prevHead = ['','','','','','','','','',''];
+  let ctrLvl = 0;
+  let ctrAdj = 0;
+  let firstHeadFlg = false;
+  if(headOnlyFlg==undefined){headOnlyFlg=false}
+  for (let i = 0; i<cliArry.length;i++){
+      let ct = checkindxT(String(cliArry[i]));
+      let headStr = cliArry[i].replace('   ',' ').replace('  ',' ');
+      
+      if(headOnlyFlg===true && ct==0){
+        if(groupFilter!=''){
+          
+          let testvar1 = cmpArry(groupFilter,headStr,0);
+          console.log('---------------------',testvar1);
+          if(testvar1!=-1){
+            console.log('---------------------',testvar1);
+            if(grpCtr[testvar1]==undefined){
+              grpCtr[testvar1] = 1
+              grouplist[testvar1] = {1:headStr.split(testvar1)[1]}
+            }else{
+              grpCtr[testvar1]++;
+              grouplist[testvar1][grpCtr[testvar1]] = headStr.split(testvar1)[1];
+            }
+          }
+        }
+        arryOut.push(headStr);
+      }
+      else{
+        if(ct==0){
+            firstHeadFlg = true;
+            capFlg =false;
+            arryCtr = [0,0,0,0,0,0,0,0,0,0];
+            prevHead = ['','','','','','','','','',''];
+            ctrLvl = 0;
+            ctrAdj = 0;
+            
+            headArry = headStr.split(' ');
+            let headCommCt = headArry.length;
+            if(headCommCt>=6){ headConfig = headArry[0]+' '+headArry[1]+' '+headArry[2]+' '+headArry[3]+' '+headArry[4] }
+            else if(headCommCt==5){ headConfig = headArry[0]+' '+headArry[1]+' '+headArry[2]+' '+headArry[3] } 
+            else if(headCommCt==4){ headConfig = headArry[0]+' '+headArry[1]+' '+headArry[2]; }
+            else if(headCommCt==3){headConfig = headArry[0]+' '+headArry[1]}
+            else if(headCommCt>=1){ headConfig = headArry[0]; }
+            if(jsonTmp[headConfig]!=undefined){
+              headConfig = headConfig+'-# '+i
+              arryOut.push(headStr.trim()+'-# '+i);
+            }else{arryOut.push(headStr.trim());}
+            if(jsonTmp[headConfig] ==undefined){jsonTmp[headConfig] = {0:headArry,1:headArry[headArry.length-1]}}
+            else{ jsonTmp[headConfig] =  {0:headArry,1:headArry[headArry.length-1]} }
+            
+            if(groupFilter!=''){
+              let testvar1 = cmpArry(groupFilter,headStr,0);
+              if(testvar1!=-1){
+                if(grpCtr[testvar1]==undefined){
+                  grpCtr[testvar1] = 1
+                  grouplist[testvar1] = {1:headStr.split(testvar1)[1]}
+                }else{
+                  grpCtr[testvar1]++;
+                  grouplist[testvar1][grpCtr[testvar1]] = headStr.split(testvar1)[1];
+                }
+              }
+            }
+        }else if(ct>0){ capFlg = true; }
+        if(capFlg && firstHeadFlg){
+            let subV1 = headStr.trim().split(' ');
+            if(subV1.length>1){
+              if(ct-ctrLvl>1){ ctrAdj = ct-ctrLvl-1 }
+              else if(ctrLvl-ct>1){ ctrAdj = ctrLvl-ct }
+              else{ ctrAdj = 0; }
+              let jindx = ct-ctrAdj;
+              ctrLvl = jindx;
+              arryCtr[jindx-1]++;
+              let prevHeadStr = '';
+              if(subV1.length>=5 && cmpArry(whitelistArry,headStr)!=1){prevHeadStr=subV1[0]+' '+subV1[1]+' '+subV1[2]+' '+subV1[3]}
+              else if(subV1.length==4 && cmpArry(whitelistArry,headStr)!=1){prevHeadStr=subV1[0]+' '+subV1[1]+' '+subV1[2]}
+              else if(subV1.length==3 && cmpArry(whitelistArry,headStr)!=1){prevHeadStr=subV1[0]+' '+subV1[1]}
+              else{prevHeadStr=subV1[0]}
+              if(prevHead[jindx-1]==''||prevHead[ct-1-ctrAdj]!=prevHeadStr){ prevHead[ct-1-ctrAdj] = prevHeadStr; }
+              else{prevHead[jindx-1] = prevHeadStr+'-$'+arryCtr[ct-1-ctrAdj]; }
+              if(jindx==1){
+                  jsonTmp[headConfig][prevHead[jindx-1]] = {0:subV1,1:subV1[subV1.length-1]}
+                  jsonTmp[headConfig][prevHead[jindx-1]]['i'] = arryCtr[jindx-1];
+                  if(groupFilter!=''){
+                    let testvar1 = cmpArry(groupFilter,headStr,0);
+                    if(testvar1!=-1){
+                      if(grpCtr[headConfig]==undefined){
+                        grpCtr[headConfig] = {};
+                        grouplist[headConfig] = {}
+                      }
+                      if(grpCtr[headConfig][testvar1]==undefined){
+                        grpCtr[headConfig][testvar1] = 1;
+                        grouplist[headConfig][testvar1] = {1:String(headStr.split(testvar1)[1]).trim(),'value':subV1[subV1.length-1]}
+                      }else{
+                        grpCtr[headConfig][testvar1]++;
+                        grouplist[headConfig][testvar1][grpCtr[headConfig][testvar1]] = String(headStr.split(testvar1)[1]).trim();
+                      }
+                    }
+                  }
+              }else if(jindx==2){
+                  jsonTmp[headConfig][prevHead[jindx-2]][prevHead[jindx-1]] = {0:subV1,1:subV1[subV1.length-1]}
+                  jsonTmp[headConfig][prevHead[jindx-2]][prevHead[jindx-1]]['i'] = arryCtr[jindx-1];
+                  if(groupFilter!=''){
+                    let testvar1 = cmpArry(groupFilter,headStr,0);
+                    if(testvar1!=-1){
+                      if(grpCtr[headConfig]==undefined){
+                        grpCtr[headConfig] = {};
+                        grouplist[headConfig] = {}
+                      }
+                      if(grpCtr[headConfig][prevHead[jindx-2]]==undefined){
+                        grpCtr[headConfig][prevHead[jindx-2]] = {};
+                        grouplist[headConfig][prevHead[jindx-2]] = {};
+                      }
+                      if(grpCtr[headConfig][prevHead[jindx-2]][testvar1]==undefined){
+                        grpCtr[headConfig][prevHead[jindx-2]][testvar1] = 1;
+                        grouplist[headConfig][prevHead[jindx-2]][testvar1] = {1:String(headStr.split(testvar1)[1]).trim(),'value':subV1[subV1.length-1]}
+                      }else{
+                        grpCtr[headConfig][prevHead[jindx-2]][testvar1]++;
+                        grouplist[headConfig][prevHead[jindx-2]][testvar1][grpCtr[headConfig][prevHead[jindx-2]][testvar1]] = String(headStr.split(testvar1)[1]).trim();
+                      }
+                    }
+                  }
+              }else if(jindx==3){
+                  jsonTmp[headConfig][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]] = {0:subV1,1:subV1[subV1.length-1]}
+                  jsonTmp[headConfig][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]]['i'] = arryCtr[jindx-1];
+              }else if(jindx==4){
+                  jsonTmp[headConfig][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]] = {0:subV1,1:subV1[subV1.length-1]}
+                  jsonTmp[headConfig][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]]['i'] = arryCtr[jindx-1];
+              }else if(jindx==5){
+                  jsonTmp[headConfig][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]] = {0:subV1,1:subV1[subV1.length-1]}
+                  jsonTmp[headConfig][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]]['i'] = arryCtr[jindx-1];
+              }else if(jindx==6){
+                  jsonTmp[headConfig][prevHead[jindx-6]][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]] = {0:subV1,1:subV1[subV1.length-1]}
+                  jsonTmp[headConfig][prevHead[jindx-6]][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]]['i'] = arryCtr[jindx-1];
+              }else if(jindx==7){
+                  jsonTmp[headConfig][prevHead[jindx-7]][prevHead[jindx-6]][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]] = {0:subV1,1:subV1[subV1.length-1]}
+                  jsonTmp[headConfig][prevHead[jindx-7]][prevHead[jindx-6]][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]]['i'] = arryCtr[jindx-1];
+              }else if(jindx==8){
+                  jsonTmp[headConfig][prevHead[jindx-8]][prevHead[jindx-7]][prevHead[jindx-6]][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]] = {0:subV1,1:subV1[subV1.length-1]}
+                  jsonTmp[headConfig][prevHead[jindx-8]][prevHead[jindx-7]][prevHead[jindx-6]][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]]['i'] = arryCtr[jindx-1];
+              }else if(jindx==9){
+                  jsonTmp[headConfig][prevHead[jindx-9]][prevHead[jindx-8]][prevHead[jindx-7]][prevHead[jindx-6]][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]] = {0:subV1,1:subV1[subV1.length-1]}
+                  jsonTmp[headConfig][prevHead[jindx-9]][prevHead[jindx-8]][prevHead[jindx-7]][prevHead[jindx-6]][prevHead[jindx-5]][prevHead[jindx-4]][prevHead[jindx-3]][prevHead[jindx-2]][prevHead[jindx-1]]['i'] = arryCtr[jindx-1];
+              }
+            }
+        }
+      }
+  }
+  if(!headOnlyFlg){jsonOut = jsonTmp;}
+  if(groupFilter!=''){jsonOut.grouplist = grouplist;}
+  jsonOut.rawHeadArry = arryOut;
+  return jsonOut;
+  function cmpArry(valArry,val,opt){
+      if(opt==undefined){opt=1}
+      for (elem of valArry){
+        if(opt == 1 && String(val).toUpperCase().indexOf(String(elem).toUpperCase())!=-1){return 1;}
+        else if(val.indexOf(elem)!=-1){ return elem;}
+      };
+      return -1;
+  }
+  function checkindxT(strval1){
+      if(strval1.length>2){ for (let i = 0; i<strval1.length;i++){ if(strval1.charCodeAt(i)!=32){ return i; } } }
+      return -1;
+  }   
+}
 const httpchildClassAPI = require('./src/child-express-sockets-handler');
-module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,APIClass:httpchildClassAPI,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge,getroute:getroute,getNetmaskDetails:getNetmaskDetails,getSubnetInfo:getSubnetInfo}};
+module.exports = {CiscoRouter:CiscoRouterdev,CiscoSwitch:CiscoSWdev,Mikrotik:Mikrotikdev,HpSwitch:HpSWdev,ArubaIAP:ArubaIAPdev,Talari:Talaridev,Defaultclass:Defaultclass,APIClass:httpchildClassAPI,tools:{str2Arry:spltdt,extractstr:extractstr,keyval:keyvalfn,arry2json:arry2json,raw2arry:raw2arry,formatMAC:formatMAC,quickipcheck:quickipcheck,arrym2s:arrym2s,jsonmerge:jsonmerge,getroute:getroute,getNetmaskDetails:getNetmaskDetails,getSubnetInfo:getSubnetInfo,cli2Object:cli2Object}};

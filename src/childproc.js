@@ -45,8 +45,9 @@ process.on('message', (msg) => {
                 }
             });
         });
+        return true;
     }
-    if(activeFlg === true){
+     if(activeFlg === true){
         if(msg.cmd ){
             loopOff();
             sshStream.write(msg.cmd);
@@ -79,6 +80,7 @@ process.on('message', (msg) => {
             chunkdly = msg.chunkdly;
             process.send({ status: 'chunkdly changed to: '+chunkdly });
         }
+        else if(msg.chunkflg){ process.send({ chunkflg: chunkflg }); }
         else if(msg.stopOutStream) {
             sshStream.unpipe(outStreamtmp);
             process.send({ status: 'OutStream stopped' });
@@ -86,6 +88,26 @@ process.on('message', (msg) => {
         else if(msg.startOutStream) {
             startOutStream();
             process.send({ status: 'OutStream started' });
+        }else if(msg.end === true){
+            process.send({ status: 'Ending command sent'});
+            sshobj.end();
+            sshobj = undefined;
+            sshStream = undefined;
+        }else if(msg.init === true){
+            devtmp = undefined;
+            devtmp = new Devnet1c({id:'0'});
+            sshobj = undefined;
+            sshStream = undefined;
+            activeFlg = false;
+            loopFN = undefined;
+            idleTimerFN = undefined;
+            loopDly = undefined;
+            chunkdly = 5000;
+            chunkflg = false;
+            tempData = '';
+            logtimer = false;
+            loopflg = true;
+            process.send({ status: 'Done resetting values'});
         }
         else{process.send({ status: 'ignore command',error:'invalid command',cmd:msg });}
     }else{ process.send({ status: 'Sub proccess not yet ready',error:'not accepted',cmd:msg }); }
